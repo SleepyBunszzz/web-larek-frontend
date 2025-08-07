@@ -5,17 +5,8 @@ export type Product = {
   description: string;
   price: number;
   category: string;
-  image: string; // путь к изображению
+  image: string;
 };
-
-// Список товаров
-export type ProductList = Product[];
-
-// Тип для карточки товара на главной странице
-export type ProductCard = Pick<Product, 'id' | 'title' | 'price' | 'category' | 'image'>;
-
-// Тип для предпросмотра товара в модальном окне
-export type ProductPreview = Pick<Product, 'id' | 'title' | 'description' | 'price' | 'category' | 'image'>;
 
 // Элемент корзины — товар с количеством
 export interface CartItem extends Pick<Product, 'id' | 'title' | 'price'> {
@@ -27,6 +18,34 @@ export interface Cart {
   items: CartItem[];
   totalPrice: number;
 }
+
+// Тип данных для формы оплаты
+export interface PaymentData {
+  paymentMethod: 'card' | 'cash';
+  deliveryAddress: string;
+}
+
+// Тип данных для формы контактов
+export interface ContactData {
+  email: string;
+  phone: string;
+}
+
+// Тип ответа после успешного заказа
+export interface OrderSuccess {
+  orderId: string;
+  totalPrice: number;
+  message: string;
+}
+
+// Список товаров
+export type ProductList = Product[];
+
+// Тип для карточки товара на главной странице
+export type ProductCard = Pick<Product, 'id' | 'title' | 'price' | 'category' | 'image'>;
+
+// Тип для предпросмотра товара в модальном окне
+export type ProductPreview = Pick<Product, 'id' | 'title' | 'description' | 'price' | 'category' | 'image'>;
 
 // Тело запроса на создание заказа
 export type OrderPayload = {
@@ -54,21 +73,4 @@ export type OrderInfo = {
   createdAt: string;
 };
 
-// Тип данных для формы оплаты
-export interface PaymentData {
-  paymentMethod: 'card' | 'cash';
-  deliveryAddress: string;
-}
 
-// Тип данных для формы контактов
-export interface ContactData {
-  email: string;
-  phone: string;
-}
-
-// Тип ответа после успешного заказа
-export interface OrderSuccess {
-  orderId: string;
-  totalPrice: number;
-  message: string;
-}
