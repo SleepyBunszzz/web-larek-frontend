@@ -1,5 +1,5 @@
 // Тип одного товара (полный)
-export type Product = {
+export type IProduct = {
   id: string;
   title: string;
   description: string;
@@ -8,8 +8,17 @@ export type Product = {
   image: string;
 };
 
+// массив товаров
+export interface IProductsData {
+  product: IProduct[];
+  preview: string | null;
+  addProduct(Product: IProduct): void;
+  deleteProduct(ProductId:string, payload: Function | null): void;
+  lookProduct(ProductId:string, payload: Function | null):void;
+  getProduct(ProductId: string): IProduct;
+}
 // Элемент корзины — товар с количеством
-export interface CartItem extends Pick<Product, 'id' | 'title' | 'price'> {
+export interface CartItem extends Pick<IProduct, 'id' | 'title' | 'price'> {
   quantity: number;
 }
 
@@ -39,13 +48,13 @@ export interface OrderSuccess {
 }
 
 // Список товаров
-export type ProductList = Product[];
+export type ProductList = IProduct[];
 
 // Тип для карточки товара на главной странице
-export type ProductCard = Pick<Product, 'id' | 'title' | 'price' | 'category' | 'image'>;
+export type ProductCard = Pick<IProduct, 'id' | 'title' | 'price' | 'category' | 'image'>;
 
 // Тип для предпросмотра товара в модальном окне
-export type ProductPreview = Pick<Product, 'id' | 'title' | 'description' | 'price' | 'category' | 'image'>;
+export type ProductPreview = Pick<IProduct, 'id' | 'title' | 'description' | 'price' | 'category' | 'image'>;
 
 // Тело запроса на создание заказа
 export type OrderPayload = {
@@ -69,7 +78,7 @@ export type OrderInfo = {
   email?: string;
   phone?: string;
   total: number;
-  items: Product[];
+  items: IProduct[];
   createdAt: string;
 };
 
