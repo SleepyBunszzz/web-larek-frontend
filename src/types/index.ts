@@ -1,4 +1,4 @@
-// Тип одного товара (полный)
+// Товар в каталоге
 export type IProduct = {
   id: string;
   title: string;
@@ -8,22 +8,23 @@ export type IProduct = {
   image: string;
 };
 
-// массив товаров
+// Интерфейс для работы с каталогом товаров
 export interface IProductsData {
-  product: IProduct[];
+  products: IProduct[];
   preview: string | null;
-  addProduct(Product: IProduct): void;
-  deleteProduct(ProductId:string, payload: Function | null): void;
-  lookProduct(ProductId:string, payload: Function | null):void;
-  getProduct(ProductId: string): IProduct;
+  addProduct(productId: IProduct): void;
+  deleteProduct(productId: string, payload?: (product: IProduct) => void): void;
+  lookProduct(productId: string, payload?: (product: IProduct) => void): void;
+  getProduct(productId: string): IProduct;
 }
+
 // Элемент корзины — товар с количеством
 export interface CartItem extends Pick<IProduct, 'id' | 'title' | 'price'> {
   quantity: number;
 }
 
 // Корзина — список товаров и итоговая сумма
-export interface Cart {
+export interface ICart {
   items: CartItem[];
   totalPrice: number;
 }
@@ -70,16 +71,5 @@ export type OrderResponse = {
   id: string;
 };
 
-// Информация о заказе по ID (подробная)
-export type OrderInfo = {
-  id: string;
-  payment: 'card' | 'cash';
-  address: string;
-  email?: string;
-  phone?: string;
-  total: number;
-  items: IProduct[];
-  createdAt: string;
-};
 
 
