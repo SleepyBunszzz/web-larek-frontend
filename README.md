@@ -50,119 +50,153 @@ npm run build
 yarn build
 ```
 
-## Архитектура приложения
-
-Код приложения разделен на слои согласно парадигме MVP:
-- слой представления, отвечает за отображение данных на странице;
-- слой данных, отвечает за хранение и изенение данных;
-- презентор, отвечает за связь представления и данных.
-
-Основные части:
-- Модели данных (Model) - хранят и изменяют состояние приложения (каталог, корзина, заказ).
-- Представления (View) - pендерят интерфейс на основе данных из моделей.
-- Презентер (Presenter) - обрабатывает события, связывает View и Model.
-- API - обеспечивает обмен данными с сервером.
-- Брокер событий - позволяет слоям общаться без прямой зависимости.
-
 ## Данные и типы данных
 
-В приложении используются два ключевых интерфейса данных:
-
-IProduct — товар, который описывает товар в каталоге и в заказах.
+Базовые типы
 
 ```
-export type IProduct = {
+export interface IApiClient {
+  get<T>(endpoint: string): Promise<T>;
+  post<T>(
+    endpoint: string,
+    data: unknown,
+    method?: string
+  ): Promise<T>; // метод запроса может быть переопределён
+}
+
+export interface IEventEmitter {
+  on<T extends keyof EventPayloads>(
+    event: T,
+    callback: (payload: EventPayloads[T]) => void
+  ): void;
+  emit<T extends keyof EventPayloads>(event: T, payload: EventPayloads[T]): void;
+  off<T extends keyof EventPayloads>(
+    event: T,
+    callback: (payload: EventPayloads[T]) => void
+  ): void;
+  trigger<T extends keyof EventPayloads>(
+    event: T,
+    payload?: EventPayloads[T]
+  ): () => void;
+}
+```
+Данные API
+
+```
+export type ApiProduct = {
+  id: string;
+  name: string;
+  cost: number;
+  desc?: string;
+  img_url: string;
+  category: string;
+};
+
+export type ApiCartItem = {
+  product_id: string;
+  quantity: number;
+};
+```
+
+Frontend типы
+
+```
+export interface IProduct {
   id: string;
   title: string;
-  description: string;
   price: number;
-  category: string;
+  description: string;
   image: string;
-}
-```
-
-ContactData — покупатель. Хранит данные покупателя для оформления заказа.
-
-```
-export interface ContactData {
-  email: string;
-  phone: string;
+  category: string;
 }
 
-```
-Элемент корзины — товар с количеством
-
-```
-export interface CartItem extends Pick<IProduct, 'id' | 'title' | 'price'> {
+export interface ICartItem {
+  product: Pick<IProduct, 'id' | 'title' | 'price'>;
   quantity: number;
 }
 ```
 
-Корзина — список товаров и итоговая сумма
+Состояния
 
 ```
-export interface Cart {
-  items: CartItem[];
+export interface IAppState {
+  products: IProduct[];
+  cart: ICartItem[];
+  currentProduct: IProduct | null;
+}
+```
+
+События
+
+```
+export enum AppEvents {
+  PRODUCTS_LOADED = 'products:loaded',
+  CART_UPDATED = 'cart:updated',
+  PRODUCT_PREVIEW = 'product:preview'
+}
+
+export type EventPayloads = {
+  [AppEvents.PRODUCTS_LOADED]: IProduct[];
+  [AppEvents.CART_UPDATED]: ICartItem[];
+  [AppEvents.PRODUCT_PREVIEW]: IProduct | null;
+};
+```
+
+Модели
+
+```
+export interface IProductModel {
+  products: IProduct[];
+  preview: string | null;
+  addProduct(product: IProduct): void;
+  deleteProduct(id: string, payload?: Function): void;
+  lookProduct(id: string, payload?: Function): void;
+  getProduct(id: string): IProduct | undefined;
+}
+
+export interface ICartModel {
+  items: ICartItem[];
   totalPrice: number;
+  addToCart(product: IProduct): void;
+  removeFromCart(productId: string): void;
+  clearCart(): void;
+}
+
+export interface IOrderModel {
+  createOrder(
+    address: string,
+    contactData: { name: string; phone: string }
+  ): Promise<void>;
+  validateAddress(address: string): boolean;
+  validateContactData(contactData: {
+    name: string;
+    phone: string;
+  }): boolean;
 }
 ```
 
-Тип данных для формы оплаты
+Компоненты
 
 ```
-export interface PaymentData {
-  paymentMethod: 'card' | 'cash';
-  deliveryAddress: string;
+export interface IProductCardProps {
+  product: IProduct;
+  onAddToCart: () => void;
+  onPreview: () => void;
+}
+
+export interface ICartViewProps {
+  items: ICartItem[];
+  onRemove: (productId: string) => void;
+  onCheckout: () => void;
 }
 ```
 
-Тип ответа после успешного заказа
+## Архитектура приложения
 
-```
-export interface OrderSuccess {
-  orderId: string;
-  totalPrice: number;
-  message: string;
-}
-```
-
-Список товаров
-
-```
-export type ProductList = Product[]
-```
-
-Тип для карточки товара на главной странице
-
-```
-export type ProductCard = Pick<Product, 'id' | 'title' | 'price' | 'category' | 'image'>
-```
-
-Тип для предпросмотра товара в модальном окне
-
-```
-export type ProductPreview = Pick<Product, 'id' | 'title' | 'description' | 'price' | 'category' | 'image'>
-```
-
-Тело запроса на создание заказа
-
-```
-export type OrderPayload = {
-  payment: 'card' | 'cash';
-  address: string;
-  email?: string;
-  phone?: string;
-  items: string[];
-}
-```
-
-Ответ от сервера после создания заказа
-
-```
-export type OrderResponse = {
-  id: string;
-}
-```
+Код приложения разделен на слои согласно парадигме MVP:
+- Представления(View) - слой представления, отвечает за отображение данных на странице;
+- Модели(Model) - слой данных, отвечает за хранение и изенение данных;
+- Презентор(Presenter) - слой, отвечающий за связь представления и данных.
 
 
 ### Базовые классы
@@ -170,16 +204,28 @@ export type OrderResponse = {
 #### Класс Api
 Содержит в себе базовую логику отправки запроса. В конструктор передается базовый адрес сервера и опциональный объект с заголовками запросов.
 Методы:
-- `get` - вылолняет GET запрос на переданный в параметрах етдпоинт и возвращает промис с объектом, которым ответил сервер (get(endpoint: string): Promise<T>).
+- `get` - вылолняет GET запрос на переданный в параметрах етдпоинт и возвращает промис с объектом, которым ответил сервер.
 - `post` - принимает объект с данными, которые будут переданы в JSON в теле запроса, и отправляет эти данные на эдпоинт, переданный, как параметр при вызове метода. По умолчанию выполнятеся `POST` запрос, но метод запроса может быть переопределен заданием третьего параметра при вызове.
-Пример: загрузка товаров, оформление заказа (post(endpoint: string, data: object, method = 'POST'): Promise<T>).
+Пример: загрузка товаров, оформление заказа.
+
+class Api {
+  constructor(baseUrl: string) {}
+  get<T>(endpoint: string): Promise<T> {}
+  post<T>(endpoint: string, data: unknown): Promise<T> {}
+}
 
 #### Класс EventEmitter
 Брокер событий повзоляет отправить события и подписаться на события, происходящие в системе. Класс используется в презентере для обработки событий и в слоях приложения для генерации событий.
 Основные методы, реализуемые классом описаны интерфейсом `IEvents`:
-- `on` - подписка на событие (on(event: string, callback: Function));
-- `emit` - инициализация события (emit(event: string, payload?: any));
-- `trigger` - возвращает функцию, при выозе которой инициалищируется требуемое в параметрах событие (trigger(event: string)).
+- `on` - подписка на событие;
+- `emit` - инициализация события;
+- `trigger` - возвращает функцию, при выозе которой инициалищируется требуемое в параметрах событие.
+
+class EventEmitter {
+  on(event: string, callback: Function): void {}
+  emit(event: string, payload?: any): void {}
+  off(event: string, callback: Function): void {}
+}
 
 ### Модели данных
 
@@ -196,6 +242,7 @@ export type OrderResponse = {
 - getProduct(id: string): IProduct — возвращает товар по ID.
   
 #### Класс CartModel
+Отвечает за управление состояние корзины, расчет итоговой суммы.
 Поля:
 - items: CartItem[] — товары в корзине.
 - totalPrice: number — общая стоимость.
@@ -204,15 +251,22 @@ export type OrderResponse = {
 - addToCart(product: IProduct) — добавляет товар.
 - removeFromCart(id: string) — удаляет товар.
 - clearCart() — очищает корзину.
-  
+
+#### Класс OrderModel
+Отвечает за оформление заказов, валидацию данных пользователя и отправку информации на сервер. Используется на шаге оформления заказа.
+Методы:
+- createOrder(address: string, contactData: { name: string; phone: string }): Promise<void> — формирует заказ на основе введённого адреса, контактных данных и текущих товаров из корзины, отправляет заказ на сервер.
+- validateAddress(address: string): boolean — проверяет корректность введённого адреса (не пустой, минимальная длина, правильный формат).
+- validateContactData(contactData: { name: string; phone: string }): boolean — проверяет корректность имени и телефона пользователя.
+
 ### Представления (View)
 Каждое представление отвечает за свой участок интерфейса:
 - ProductListView — список товаров.
 - ProductCardView — карточка товара.
 - CartView — корзина.
-- OrderFormView — форма оформления заказа.
 - ModalView — модальные окна.
 
 ### Презентер
 В проекте используется один презентер, код которого находится в index.ts.
-Он подписывается на события от View и вызывает методы моделей.
+Подписывается на события от View, вызывает методы моделей, передаёт данные обратно в View.
+Управляет модалками и сценарием оформления заказа.
