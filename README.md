@@ -57,11 +57,7 @@ yarn build
 ```
 export interface IApiClient {
   get<T>(endpoint: string): Promise<T>;
-  post<T>(
-    endpoint: string,
-    data: unknown,
-    method?: string
-  ): Promise<T>; // метод запроса может быть переопределён
+  post<T>(endpoint: string, data: unknown, method?: string): Promise<T>;
 }
 
 export interface IEventEmitter {
@@ -80,39 +76,16 @@ export interface IEventEmitter {
   ): () => void;
 }
 ```
-Данные API
+Данные
 
 ```
-export type ApiProduct = {
+export interface IProduct {
   id: string;
   name: string;
   cost: number;
   desc?: string;
   img_url: string;
   category: string;
-};
-
-export type ApiCartItem = {
-  product_id: string;
-  quantity: number;
-};
-```
-
-Frontend типы
-
-```
-export interface IProduct {
-  id: string;
-  title: string;
-  price: number;
-  description: string;
-  image: string;
-  category: string;
-}
-
-export interface ICartItem {
-  product: Pick<IProduct, 'id' | 'title' | 'price'>;
-  quantity: number;
 }
 ```
 
@@ -121,7 +94,7 @@ export interface ICartItem {
 ```
 export interface IAppState {
   products: IProduct[];
-  cart: ICartItem[];
+  cart: IProduct[];
   currentProduct: IProduct | null;
 }
 ```
@@ -137,7 +110,7 @@ export enum AppEvents {
 
 export type EventPayloads = {
   [AppEvents.PRODUCTS_LOADED]: IProduct[];
-  [AppEvents.CART_UPDATED]: ICartItem[];
+  [AppEvents.CART_UPDATED]: IProduct[];
   [AppEvents.PRODUCT_PREVIEW]: IProduct | null;
 };
 ```
@@ -147,31 +120,36 @@ export type EventPayloads = {
 ```
 export interface IProductModel {
   products: IProduct[];
-  preview: string | null;
-  addProduct(product: IProduct): void;
-  deleteProduct(id: string, payload?: Function): void;
-  lookProduct(id: string, payload?: Function): void;
+  preview: IProduct | null; // Хранит весь продукт, не только ID
+  setProducts(products: IProduct[]): void;
   getProduct(id: string): IProduct | undefined;
+  setPreview(product: IProduct | null): void;
 }
 
 export interface ICartModel {
-  items: ICartItem[];
+  items: IProduct[]; // Без quantity
   totalPrice: number;
-  addToCart(product: IProduct): void;
-  removeFromCart(productId: string): void;
+  addItem(product: IProduct): void;
+  removeItem(productId: string): void;
   clearCart(): void;
 }
 
 export interface IOrderModel {
-  createOrder(
-    address: string,
-    contactData: { name: string; phone: string }
-  ): Promise<void>;
-  validateAddress(address: string): boolean;
-  validateContactData(contactData: {
-    name: string;
-    phone: string;
-  }): boolean;
+  address: string;
+  contactData: { name: string; phone: string };
+  items: IProduct[];
+  setAddress(address: string): void;
+  setContactData(data: { name: string; phone: string }): void;
+  validate(): boolean;
+}
+```
+
+API
+
+```
+export interface ICommerceAPI extends IApiClient {
+  getProducts(): Promise<IProduct[]>;
+  createOrder(orderData: Omit<IOrderModel, 'validate'>): Promise<void>;
 }
 ```
 
@@ -185,7 +163,7 @@ export interface IProductCardProps {
 }
 
 export interface ICartViewProps {
-  items: ICartItem[];
+  items: IProduct[];
   onRemove: (productId: string) => void;
   onCheckout: () => void;
 }
@@ -229,44 +207,95 @@ class EventEmitter {
 
 ### Модели данных
 
-#### Класс ProductModel
+#### Класс IProductModel
 Отвечает за хранение списка товаров, поиск и удаление.
 Поля:
-- products: IProduct[] — список товаров.
-- preview: string | null — ID товара для предпросмотра.
+- products: IProduct[] — массив загруженных товаров.
+- preview: IProduct | null — товар, выбранный для предпросмотра (хранит весь объект товара).
 - 
 Методы:
-- addProduct(product: IProduct) — добавляет товар.
-- deleteProduct(id: string, payload?: Function) — удаляет товар.
-- lookProduct(id: string, payload?: Function) — устанавливает товар для предпросмотра.
-- getProduct(id: string): IProduct — возвращает товар по ID.
+- setProducts(products: IProduct[]): void - сохраняет массив товаров (используется после загрузки с сервера)
+- getProduct(id: string): IProduct | undefined - возвращает товар по ID
+- setPreview(product: IProduct | null): void - устанавливает товар для предпросмотра
   
-#### Класс CartModel
+#### Класс ICartModel
 Отвечает за управление состояние корзины, расчет итоговой суммы.
 Поля:
-- items: CartItem[] — товары в корзине.
-- totalPrice: number — общая стоимость.
+- items: IProduct[] — массив товаров в корзине.
+- totalPrice: number — общая стоимость товаров в корзине.
 
 Методы:
-- addToCart(product: IProduct) — добавляет товар.
-- removeFromCart(id: string) — удаляет товар.
-- clearCart() — очищает корзину.
+- addItem(product: IProduct): void - добавляет товар в корзину
+- removeItem(productId: string): void - удаляет товар из корзины
+- clearCart(): void - полностью очищает корзину
 
-#### Класс OrderModel
+#### Класс IOrderModel
 Отвечает за оформление заказов, валидацию данных пользователя и отправку информации на сервер. Используется на шаге оформления заказа.
-Методы:
-- createOrder(address: string, contactData: { name: string; phone: string }): Promise<void> — формирует заказ на основе введённого адреса, контактных данных и текущих товаров из корзины, отправляет заказ на сервер.
-- validateAddress(address: string): boolean — проверяет корректность введённого адреса (не пустой, минимальная длина, правильный формат).
-- validateContactData(contactData: { name: string; phone: string }): boolean — проверяет корректность имени и телефона пользователя.
+Поля:
+- address: string - адрес доставки
+- contactData: { name: string; phone: string } - контактные данные покупателя
+- items: IProduct[] - товары из корзины
 
-### Представления (View)
-Каждое представление отвечает за свой участок интерфейса:
-- ProductListView — список товаров.
-- ProductCardView — карточка товара.
-- CartView — корзина.
-- ModalView — модальные окна.
+Методы:
+- setAddress(address: string): void - сохраняет адрес
+- setContactData(data: { name: string; phone: string }): void - сохраняет контактные данные
+- validate(): boolean - проверяет корректность всех данных перед оформлением
+
+### API слой
+
+#### Класс ICommerceAPI
+Интерфейс клиента для взаимодействия с API.
+
+Методы:
+- getProducts(): Promise<IProduct[]> — получает список всех товаров
+- getProductById(id: string): Promise<IProduct> — получает один товар по ID
+- createOrder(orderData: Omit<IOrderModel, 'validate'>): Promise<void> — возвращает Promise<void>.
+
+### Представления (Views)
+
+#### Класс ProductListView
+Отображает список товаров. 
+Генерирует события:
+- product:preview - при выборе товара для детального просмотра
+- cart:add - при добавлении товара в корзину
+
+#### Класс ProductCardView
+Рендерит карточку отдельного товара. 
+Принимает:
+- product: IProduct - данные товара
+- onPreview: () => void - обработчик просмотра деталей
+- onAddToCart: () => void - обработчик добавления в корзину
+
+#### Класс CartView
+Отображает содержимое корзины. 
+Принимает:
+- items: CartItem[] - список товаров
+- onRemove: (id: string) => void - обработчик удаления товара
+- onCheckout: () => void - обработчик перехода к оформлению
+
+#### Класс OrderFormView
+Отображает форму оформления заказа. 
+Генерирует события:
+- order:submit - при отправке формы
+- form:change - при изменении данных в форме
+
+#### Класс ModalView
+Универсальный компонент модального окна. 
+Методы:
+- open(content: HTMLElement): void - открывает модальное окно с переданным содержимым
+- close(): void - закрывает модальное окно
+- setTitle(title: string): void - устанавливает заголовок окна
 
 ### Презентер
 В проекте используется один презентер, код которого находится в index.ts.
-Подписывается на события от View, вызывает методы моделей, передаёт данные обратно в View.
-Управляет модалками и сценарием оформления заказа.
+Презентер координирует взаимодействие между моделями и представлениями:
+1. Подписывается на события от View
+2. Обновляет модели данных
+3. Управляет отображением модальных окон
+4. Инициирует загрузку данных через CommerceAPI
+5. Обновляет View при изменениях в моделях
+
+Основной поток:
+- При загрузке страницы загружает товары через CommerceAPI → сохраняет в ProductModel → обновляет ProductListView
+- При добавлении в корзину обновляет CartModel → обновляет CartView
+- При оформлении заказа валидирует данные через OrderModel → отправляет на сервер через CommerceAPI
