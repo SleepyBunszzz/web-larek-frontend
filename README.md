@@ -53,121 +53,44 @@ yarn build
 ## Данные и типы данных
 
 Базовые типы
+- IApiClient — абстракция для работы с API:
+get<T>(endpoint), post<T>(endpoint, data, method?).
+- IEventEmitter — брокер событий:
+on, emit, off, trigger.
 
-```
-export interface IApiClient {
-  get<T>(endpoint: string): Promise<T>;
-  post<T>(endpoint: string, data: unknown, method?: string): Promise<T>;
-}
-
-export interface IEventEmitter {
-  on<T extends keyof EventPayloads>(
-    event: T,
-    callback: (payload: EventPayloads[T]) => void
-  ): void;
-  emit<T extends keyof EventPayloads>(event: T, payload: EventPayloads[T]): void;
-  off<T extends keyof EventPayloads>(
-    event: T,
-    callback: (payload: EventPayloads[T]) => void
-  ): void;
-  trigger<T extends keyof EventPayloads>(
-    event: T,
-    payload?: EventPayloads[T]
-  ): () => void;
-}
-```
 Данные
-
-```
-export interface IProduct {
-  id: string;
-  name: string;
-  cost: number;
-  desc?: string;
-  img_url: string;
-  category: string;
-}
-```
+- IProduct — товар каталога:
+id, name, cost, desc?, img_url, category.
 
 Состояния
-
-```
-export interface IAppState {
-  products: IProduct[];
-  cart: IProduct[];
-  currentProduct: IProduct | null;
-}
-```
+- IAppState — глобальное состояние приложения:
+products: IProduct[], cart: IProduct[], currentProduct: IProduct | null.
 
 События
-
-```
-export enum AppEvents {
-  PRODUCTS_LOADED = 'products:loaded',
-  CART_UPDATED = 'cart:updated',
-  PRODUCT_PREVIEW = 'product:preview'
-}
-
-export type EventPayloads = {
-  [AppEvents.PRODUCTS_LOADED]: IProduct[];
-  [AppEvents.CART_UPDATED]: IProduct[];
-  [AppEvents.PRODUCT_PREVIEW]: IProduct | null;
-};
-```
+- AppEvents — перечисление событий (загрузка товаров, предпросмотр, обновление корзины, изменения заказа, модалка, ошибки форм).
+- EventPayloads — типы полезной нагрузки для каждого события.
 
 Модели
-
-```
-export interface IProductModel {
-  products: IProduct[];
-  preview: IProduct | null; // Хранит весь продукт, не только ID
-  setProducts(products: IProduct[]): void;
-  getProduct(id: string): IProduct | undefined;
-  setPreview(product: IProduct | null): void;
-}
-
-export interface ICartModel {
-  items: IProduct[]; // Без quantity
-  totalPrice: number;
-  addItem(product: IProduct): void;
-  removeItem(productId: string): void;
-  clearCart(): void;
-}
-
-export interface IOrderModel {
-  address: string;
-  contactData: { name: string; phone: string };
-  items: IProduct[];
-  setAddress(address: string): void;
-  setContactData(data: { name: string; phone: string }): void;
-  validate(): boolean;
-}
-```
+- ProductModel — хранит список товаров и текущий предпросмотр.
+- CartModel — управляет товарами в корзине и считает итоговую сумму.
+- OrderModel — хранит данные заказа (оплата, адрес, контакты, товары) и валидирует их.
+- PaymentMethod — 'card' | 'cash'.
 
 API
-
-```
-export interface ICommerceAPI extends IApiClient {
-  getProducts(): Promise<IProduct[]>;
-  createOrder(orderData: Omit<IOrderModel, 'validate'>): Promise<void>;
-}
-```
+- OrderPayload — данные заказа для отправки: payment, address, email, phone, items: string[].
+- ICommerceAPI — getProducts, getProductById, createOrder.
 
 Компоненты
-
-```
-export interface IProductCardProps {
-  product: IProduct;
-  onAddToCart: () => void;
-  onPreview: () => void;
-}
-
-export interface ICartViewProps {
-  items: IProduct[];
-  onRemove: (productId: string) => void;
-  onCheckout: () => void;
-}
-```
+- IProductListViewProps — список товаров (предпросмотр, добавление в корзину).
+- IProductCardProps — карточка товара (отображение, предпросмотр, добавить в корзину).
+- IBasketProps — корзина (список, сумма, удаление, переход к заказу).
+- IBasketItemProps — строка корзины (индекс, название, цена, удаление).
+- ICartViewProps — отдельное представление корзины (если используется).
+- IModalProps — модальное окно (контент, обработчик закрытия).
+- IPageProps — главная страница (счётчик корзины, список товаров).
+- IOrderAddressFormProps — форма шага 1 (оплата и адрес).
+- IOrderContactsFormProps — форма шага 2 (email, телефон).
+- IFormSuccessProps — успешное оформление (сумма, закрытие).
 
 ## Архитектура приложения
 
@@ -182,109 +105,186 @@ export interface ICartViewProps {
 #### Класс Api
 Содержит в себе базовую логику отправки запроса. В конструктор передается базовый адрес сервера и опциональный объект с заголовками запросов.
 Методы:
-- `get` - вылолняет GET запрос на переданный в параметрах етдпоинт и возвращает промис с объектом, которым ответил сервер.
-- `post` - принимает объект с данными, которые будут переданы в JSON в теле запроса, и отправляет эти данные на эдпоинт, переданный, как параметр при вызове метода. По умолчанию выполнятеся `POST` запрос, но метод запроса может быть переопределен заданием третьего параметра при вызове.
+- `get` - выполняет GET запрос на переданный в параметрах эндпоинт и возвращает промис с объектом, которым ответил сервер.
+- `post` - принимает объект с данными, которые будут переданы в JSON в теле запроса, и отправляет эти данные на эндпоинт, переданный, как параметр при вызове метода. По умолчанию выполняется `POST` запрос, но метод запроса может быть переопределен заданием третьего параметра при вызове.
 Пример: загрузка товаров, оформление заказа.
 
-class Api {
-  constructor(baseUrl: string) {}
-  get<T>(endpoint: string): Promise<T> {}
-  post<T>(endpoint: string, data: unknown): Promise<T> {}
-}
-
 #### Класс EventEmitter
-Брокер событий повзоляет отправить события и подписаться на события, происходящие в системе. Класс используется в презентере для обработки событий и в слоях приложения для генерации событий.
-Основные методы, реализуемые классом описаны интерфейсом `IEvents`:
+Брокер событий позволяет отправить события и подписаться на события, происходящие в системе. Класс используется в презентере для обработки событий и в слоях приложения для генерации событий.
+Основные методы, реализуемые классом описаны интерфейсом `IEventEmitter`:
 - `on` - подписка на событие;
 - `emit` - инициализация события;
-- `trigger` - возвращает функцию, при выозе которой инициалищируется требуемое в параметрах событие.
-
-class EventEmitter {
-  on(event: string, callback: Function): void {}
-  emit(event: string, payload?: any): void {}
-  off(event: string, callback: Function): void {}
-}
+- `off(event, callback)` — отписка от события.
+- `trigger` - возвращает функцию, при вызове которой инициализируется требуемое в параметрах событие.
 
 ### Модели данных
 
-#### Класс IProductModel
-Отвечает за хранение списка товаров, поиск и удаление.
+#### Класс ProductModel
+Отвечает за хранение списка товаров и выбор товара для предпросмотра.
 Поля:
 - products: IProduct[] — массив загруженных товаров.
 - preview: IProduct | null — товар, выбранный для предпросмотра (хранит весь объект товара).
 - 
 Методы:
-- setProducts(products: IProduct[]): void - сохраняет массив товаров (используется после загрузки с сервера)
+- setProducts(products: IProduct[]): void - сохраняет массив товаров (например, после загрузки из API)
 - getProduct(id: string): IProduct | undefined - возвращает товар по ID
 - setPreview(product: IProduct | null): void - устанавливает товар для предпросмотра
   
-#### Класс ICartModel
+#### Класс CartModel
 Отвечает за управление состояние корзины, расчет итоговой суммы.
 Поля:
-- items: IProduct[] — массив товаров в корзине.
-- totalPrice: number — общая стоимость товаров в корзине.
+- items: IProduct[] — массив товаров в корзине
 
 Методы:
 - addItem(product: IProduct): void - добавляет товар в корзину
 - removeItem(productId: string): void - удаляет товар из корзины
 - clearCart(): void - полностью очищает корзину
+- getTotal() — возвращает общую стоимость
 
-#### Класс IOrderModel
-Отвечает за оформление заказов, валидацию данных пользователя и отправку информации на сервер. Используется на шаге оформления заказа.
+#### Класс OrderModel
+Хранит данные для оформления заказа и проверяет их корректность.
 Поля:
+- payment?: 'card' | 'cash' — способ оплаты
 - address: string - адрес доставки
-- contactData: { name: string; phone: string } - контактные данные покупателя
+- contactData: { name: string; phone: string } — имя и телефон
 - items: IProduct[] - товары из корзины
+Поле email не хранится в модели и добавляется при формировании OrderPayload для API.
 
 Методы:
+- setPayment(method) — выбрать способ оплаты
 - setAddress(address: string): void - сохраняет адрес
 - setContactData(data: { name: string; phone: string }): void - сохраняет контактные данные
+- setItems(items) — сохранить список товаров
 - validate(): boolean - проверяет корректность всех данных перед оформлением
 
 ### API слой
 
-#### Класс ICommerceAPI
-Интерфейс клиента для взаимодействия с API.
+#### Интерфейс ICommerceAPI
+Расширяет IApiClient
 
 Методы:
 - getProducts(): Promise<IProduct[]> — получает список всех товаров
 - getProductById(id: string): Promise<IProduct> — получает один товар по ID
-- createOrder(orderData: Omit<IOrderModel, 'validate'>): Promise<void> — возвращает Promise<void>.
+- createOrder(order: OrderPayload) — оформить заказ.
+
+OrderPayload включает:
+- payment: 'card' | 'cash'
+- address: string
+- email: string
+- phone: string
+- items: string[] — ID товаров
 
 ### Представления (Views)
+Классы отображают данные внутри переданных им контейнеров.
 
-#### Класс ProductListView
-Отображает список товаров. 
-Генерирует события:
-- product:preview - при выборе товара для детального просмотра
-- cart:add - при добавлении товара в корзину
+#### Класс Component
+Базовый абстрактный класс для всех View.
 
-#### Класс ProductCardView
-Рендерит карточку отдельного товара. 
-Принимает:
-- product: IProduct - данные товара
-- onPreview: () => void - обработчик просмотра деталей
-- onAddToCart: () => void - обработчик добавления в корзину
-
-#### Класс CartView
-Отображает содержимое корзины. 
-Принимает:
-- items: CartItem[] - список товаров
-- onRemove: (id: string) => void - обработчик удаления товара
-- onCheckout: () => void - обработчик перехода к оформлению
-
-#### Класс OrderFormView
-Отображает форму оформления заказа. 
-Генерирует события:
-- order:submit - при отправке формы
-- form:change - при изменении данных в форме
-
-#### Класс ModalView
-Универсальный компонент модального окна. 
 Методы:
-- open(content: HTMLElement): void - открывает модальное окно с переданным содержимым
-- close(): void - закрывает модальное окно
-- setTitle(title: string): void - устанавливает заголовок окна
+- toggleClass — переключение класса DOM-элемента
+- setText — установка текстового содержимого
+- setDisabled — включение/отключение кнопки
+- setHidden — скрытие элемента (display: none)
+- setVisible — показать элемент (снять display: none)
+- setImage — установка src и alt для <img>
+- render — отрисовка компонента
+
+#### Класс Modal
+Реализует модальное окно. Управляет открытием/закрытием, устанавливает слушатели на клик по фону и кнопке-крестику.
+
+Поля:
+- _closeButton: HTMLButtonElement — кнопка закрытия
+- _content: HTMLElement — контейнер для контента
+- events: IEvents — брокер событий
+
+Методы:
+- open() — открыть модалку
+- close() — закрыть модалку
+- set content(value: HTMLElement) — заменить содержимое
+
+#### Класс ProductCard
+Отображает карточку товара на главной странице.
+
+Поля:
+- itemId: string — id товара
+- _category: HTMLElement — категория
+- _title: HTMLElement — название
+- _image: HTMLImageElement — изображение
+- _price: HTMLElement — цена
+- _description: HTMLElement — описание
+- openButton: HTMLButtonElement — кнопка предпросмотра
+
+#### Класс ProductCardPreview
+Используется в модальном окне для предпросмотра товара и кнопки добавления/удаления из корзины.
+
+Поля:
+- _description: HTMLElement — описание товара
+- button: HTMLButtonElement — кнопка купить/удалить
+
+Методы:
+- buttonStatus(isInBasket: boolean) — меняет текст кнопки («Купить» / «Убрать из корзины»)
+- buttonDisabled(disabled: boolean) — блокирует кнопку (например, если товар недоступен)
+
+#### Класс Basket
+Отображает содержимое корзины внутри модального окна.
+
+Поля:
+- _list: HTMLElement — список товаров
+- orderButton: HTMLButtonElement — кнопка «Оформить заказ»
+- _totalPrice: HTMLElement — общая сумма.
+
+#### Класс BasketItem
+Отображает товар в списке корзины.
+
+Поля:
+- itemId: string — id товара
+- _count: HTMLElement — порядковый номер
+- _title: HTMLElement — название
+- _price: HTMLElement — цена
+- deleteButton: HTMLButtonElement — кнопка удаления
+
+Методы:
+- setCounter(value: number) — установить порядковый номер товара
+
+#### Класс Page
+Отображает главную страницу с товарами и иконкой корзины.
+
+Поля:
+- elementCounter: HTMLElement — счётчик товаров в корзине
+- buttonBasket: HTMLButtonElement — кнопка открытия корзины
+- galleryCard: HTMLElement — контейнер для карточек
+
+Методы:
+- setLocked(value: boolean) — блокировка страницы при открытом модальном окне
+
+#### Класс Form
+Базовый класс для форм. Генерирует событие при изменении полей и при отправке формы.
+
+Поля:
+- _submit: HTMLButtonElement — кнопка отправки
+- _errors: HTMLElement — контейнер для сообщений об ошибках
+
+Методы:
+onInputChange(field: keyof T, value: string) — защищённый метод, эмитит событие изменения поля.
+
+#### Класс FormOrder 
+Реализует форму первого шага заказа (оплата и адрес).
+
+Поля:
+- paymentButtons: NodeListOf<HTMLButtonElement> — выбор способа оплаты
+- selectedPayment: string — текущий метод оплаты
+
+Методы:
+- reset() — сброс введённых данных
+
+#### Класс FormContacts
+Реализует форму второго шага заказа (контактные данные).
+
+Методы:
+- reset() — сброс введённых данных.
+
+#### Класс FormSuccess
+Компонент-уведомление об успешном заказе. Отображает общую сумму и кнопку закрытия.
 
 ### Презентер
 В проекте используется один презентер, код которого находится в index.ts.
@@ -292,10 +292,10 @@ class EventEmitter {
 1. Подписывается на события от View
 2. Обновляет модели данных
 3. Управляет отображением модальных окон
-4. Инициирует загрузку данных через CommerceAPI
+4. Загружает данные через API
 5. Обновляет View при изменениях в моделях
 
 Основной поток:
-- При загрузке страницы загружает товары через CommerceAPI → сохраняет в ProductModel → обновляет ProductListView
-- При добавлении в корзину обновляет CartModel → обновляет CartView
-- При оформлении заказа валидирует данные через OrderModel → отправляет на сервер через CommerceAPI
+- Загрузка товаров → ProductModel → обновление каталога.
+- Добавление в корзину → CartModel → обновление корзины.
+- Оформление заказа → проверка в OrderModel → отправка через ICommerceAPI.
