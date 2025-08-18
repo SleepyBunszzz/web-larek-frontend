@@ -9,7 +9,7 @@ export interface IEventEmitter {
     event: T,
     callback: (payload: EventPayloads[T]) => void
   ): void;
-  emit<T extends keyof EventPayloads>(event: T, payload?: EventPayloads[T]): void; // ← payload? (было обязательно)
+  emit<T extends keyof EventPayloads>(event: T, payload?: EventPayloads[T]): void;
   off<T extends keyof EventPayloads>(
     event: T,
     callback: (payload: EventPayloads[T]) => void
@@ -65,7 +65,7 @@ export type EventPayloads = {
 
   [AppEvents.FORM_ERROR]: { message: string };
 
-  [AppEvents.MODAL_OPEN]: { content?: HTMLElement } | undefined; // ← было: { ... } | void
+  [AppEvents.MODAL_OPEN]: { content?: HTMLElement } | undefined;
   [AppEvents.MODAL_CLOSE]: undefined;
 };
 
@@ -143,8 +143,8 @@ export interface IBasketProps {
 export interface IBasketItemProps {
   index: number;
   id: string;
-  title: string; // отображается product.name
-  price: number; // отображается product.cost
+  title: string;
+  price: number;
   onDelete: (id: string) => void;
 }
 
