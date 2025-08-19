@@ -20,7 +20,6 @@ export interface IEventEmitter {
   ): () => void;
 }
 
-
 /* ========== Данные ========== */
 export interface IProduct {
   id: string;
@@ -60,7 +59,7 @@ export type EventPayloads = {
   [AppEvents.CART_UPDATED]: IProduct[];
 
   [AppEvents.ORDER_ADDRESS_CHANGED]: { payment: PaymentMethod; address: string };
-  [AppEvents.ORDER_CONTACTS_CHANGED]: { email: string; phone: string };
+  [AppEvents.ORDER_CONTACTS_CHANGED]: { name: string; email: string; phone: string };
   [AppEvents.ORDER_SUBMITTED]: undefined;
 
   [AppEvents.FORM_ERROR]: { message: string };
@@ -69,11 +68,10 @@ export type EventPayloads = {
   [AppEvents.MODAL_CLOSE]: undefined;
 };
 
-
 /* ========== Модели ========== */
 export interface IProductModel {
   products: IProduct[];
-  preview: IProduct | null; 
+  preview: IProduct | null;
   setProducts(products: IProduct[]): void;
   getProduct(id: string): IProduct | undefined;
   setPreview(product: IProduct | null): void;
@@ -90,14 +88,17 @@ export interface ICartModel {
 export type PaymentMethod = 'card' | 'cash';
 
 export interface IOrderModel {
-  payment?: PaymentMethod;
+  payment: PaymentMethod;
   address: string;
-  contactData: { name: string; phone: string };
-  items: IProduct[];
+  name: string;
+  email: string;
+  phone: string;
+
   setPayment(method: PaymentMethod): void;
   setAddress(address: string): void;
-  setContactData(data: { name: string; phone: string }): void;
-  setItems(items: IProduct[]): void;
+  setName(name: string): void;
+  setEmail(email: string): void;
+  setPhone(phone: string): void;
   validate(): boolean;
 }
 
@@ -105,9 +106,11 @@ export interface IOrderModel {
 export type OrderPayload = {
   payment: 'card' | 'cash';
   address: string;
+  name: string;
   email: string;
   phone: string;
-  items: string[];
+  items: string[]; // массив ID товаров из корзины
+  total: number;   // общая сумма заказа
 };
 
 export interface ICommerceAPI extends IApiClient {
@@ -180,9 +183,10 @@ export interface IOrderAddressFormProps {
 
 // Форма — шаг 2 (контакты)
 export interface IOrderContactsFormProps {
+  name: string;
   email: string;
   phone: string;
-  onChange: (data: { email: string; phone: string }) => void;
+  onChange: (data: { name: string; email: string; phone: string }) => void;
   onSubmit: () => void;
   errors?: string;
 }

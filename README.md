@@ -52,46 +52,38 @@ yarn build
 
 ## Данные и типы данных
 
-Базовые типы
-- IApiClient — абстракция для работы с API:
-get<T>(endpoint), post<T>(endpoint, data, method?).
-- IEventEmitter — брокер событий:
-on, emit, off, trigger.
+IProduct — товар каталога
 
-Данные
-- IProduct — товар каталога:
-id, name, cost, desc?, img_url, category.
+```
+id: string — идентификатор;
+name: string — название;
+cost: number — цена;
+desc?: string — описание (опционально);
+img_url: string — изображение;
+category: string — категория.
+```
 
-Состояния
-- IAppState — глобальное состояние приложения:
-products: IProduct[], cart: IProduct[], currentProduct: IProduct | null.
+IOrder — данные покупателя
 
-События
-- AppEvents — перечисление событий (загрузка товаров, предпросмотр, обновление корзины, изменения заказа, модалка, ошибки форм).
-- EventPayloads — типы полезной нагрузки для каждого события.
+```
+payment: 'card' | 'cash' — способ оплаты;
+address: string — адрес доставки;
+name: string — имя покупателя;
+email: string — e-mail;
+phone: string — телефон.
+```
 
-Модели
-- ProductModel — хранит список товаров и текущий предпросмотр.
-- CartModel — управляет товарами в корзине и считает итоговую сумму.
-- OrderModel — хранит данные заказа (оплата, адрес, контакты, товары) и валидирует их.
-- PaymentMethod — 'card' | 'cash'.
+OrderPayload — данные заказа для API:
 
-API
-- OrderPayload — данные заказа для отправки: payment, address, email, phone, items: string[].
-- ICommerceAPI — getProducts, getProductById, createOrder.
-
-Компоненты
-- IProductListViewProps — список товаров (предпросмотр, добавление в корзину).
-- IProductCardProps — карточка товара (отображение, предпросмотр, добавить в корзину).
-- IBasketProps — корзина (список, сумма, удаление, переход к заказу).
-- IBasketItemProps — строка корзины (индекс, название, цена, удаление).
-- ICartViewProps — отдельное представление корзины (если используется).
-- IModalProps — модальное окно (контент, обработчик закрытия).
-- IPageProps — главная страница (счётчик корзины, список товаров).
-- IOrderAddressFormProps — форма шага 1 (оплата и адрес).
-- IOrderContactsFormProps — форма шага 2 (email, телефон).
-- IFormSuccessProps — успешное оформление (сумма, закрытие).
-
+```
+payment: 'card' | 'cash';
+address: string;
+name: string;
+email: string;
+phone: string;
+items: string[] — список ID товаров;
+total: number — сумма заказа.
+```
 ## Архитектура приложения
 
 Код приложения разделен на слои согласно парадигме MVP:
@@ -131,7 +123,7 @@ API
 - setPreview(product: IProduct | null): void - устанавливает товар для предпросмотра
   
 #### Класс CartModel
-Отвечает за управление состояние корзины, расчет итоговой суммы.
+Отвечает за управление состоянием корзины, расчет итоговой суммы.
 Поля:
 - items: IProduct[] — массив товаров в корзине
 
@@ -144,18 +136,20 @@ API
 #### Класс OrderModel
 Хранит данные для оформления заказа и проверяет их корректность.
 Поля:
-- payment?: 'card' | 'cash' — способ оплаты
+- payment: PaymentMethod — способ оплаты ('card' | 'cash')
 - address: string - адрес доставки
-- contactData: { name: string; phone: string } — имя и телефон
-- items: IProduct[] - товары из корзины
-Поле email не хранится в модели и добавляется при формировании OrderPayload для API.
+- name: string - имя покупателя (отображается в заказе)
+- email: string - электронная почта покупателя
+- phone: string - номер телефона для связи.
+
 
 Методы:
-- setPayment(method) — выбрать способ оплаты
-- setAddress(address: string): void - сохраняет адрес
-- setContactData(data: { name: string; phone: string }): void - сохраняет контактные данные
-- setItems(items) — сохранить список товаров
-- validate(): boolean - проверяет корректность всех данных перед оформлением
+- setPayment(method: PaymentMethod): void — сохранить выбранный способ оплаты
+- setAddress(address: string): void — сохранить адрес доставки
+- setName(name: string): void — сохранить имя покупателя
+- setEmail(email: string): void — сохранить электронную почту
+- setPhone(phone: string): void — сохранить телефон
+- validate(): boolean — проверяет заполненность и корректность всех полей (адрес, имя, email, телефон, метод оплаты).
 
 ### API слой
 
@@ -173,28 +167,29 @@ OrderPayload включает:
 - email: string
 - phone: string
 - items: string[] — ID товаров
+- total: number — сумма заказа
 
 ### Представления (Views)
-Классы отображают данные внутри переданных им контейнеров.
+Классы отображают данные внутри переданных контейнеров. Все они наследуются от Component или специализированных базовых классов.
 
 #### Класс Component
 Базовый абстрактный класс для всех View.
 
 Методы:
-- toggleClass — переключение класса DOM-элемента
-- setText — установка текстового содержимого
-- setDisabled — включение/отключение кнопки
-- setHidden — скрытие элемента (display: none)
-- setVisible — показать элемент (снять display: none)
-- setImage — установка src и alt для <img>
-- render — отрисовка компонента
+- toggleClass(element, className, force?) — переключение класса DOM-элемента
+- setText(element, value) — установка текстового содержимого
+- setDisabled(element, state) — включение/отключение кнопки
+- setHidden(element) — скрытие элемента (display: none)
+- setVisible(element) — показать элемент (снять display: none)
+- setImage(img, src, alt?) — установка src и alt для <img>
+- render(container) — отрисовка компонента.
 
 #### Класс Modal
 Реализует модальное окно. Управляет открытием/закрытием, устанавливает слушатели на клик по фону и кнопке-крестику.
 
 Поля:
 - _closeButton: HTMLButtonElement — кнопка закрытия
-- _content: HTMLElement — контейнер для контента
+- _content: HTMLElement — контейнер для содержимого
 - events: IEventEmitter — брокер событий
 
 Методы:
@@ -202,89 +197,69 @@ OrderPayload включает:
 - close() — закрыть модалку
 - set content(value: HTMLElement) — заменить содержимое
 
-#### Класс ProductCard
-Отображает карточку товара на главной странице.
+#### Класс ProductView
+Базовый класс для отображения товара.
 
 Поля:
-- itemId: string — id товара
-- _category: HTMLElement — категория
-- _title: HTMLElement — название
-- _image: HTMLImageElement — изображение
-- _price: HTMLElement — цена
-- _description: HTMLElement — описание
-- openButton: HTMLButtonElement — кнопка предпросмотра
+- id: string — идентификатор товара.
+- title: HTMLElement — название
+- category: HTMLElement — категория
+- price: HTMLElement — цена
+- image: HTMLImageElement — изображение.
 
-#### Класс ProductCardPreview
-Используется в модальном окне для предпросмотра товара и кнопки добавления/удаления из корзины.
-
-Поля:
-- _description: HTMLElement — описание товара
-- button: HTMLButtonElement — кнопка купить/удалить
-
-Методы:
-- buttonStatus(isInBasket: boolean) — меняет текст кнопки («Купить» / «Убрать из корзины»)
-- buttonDisabled(disabled: boolean) — блокирует кнопку (например, если товар недоступен)
+Наследники:
+- ProductCard — карточка товара в каталоге
+- ProductCardPreview — предпросмотр товара (дополнительно содержит кнопку «Купить / Убрать из корзины»)
+- BasketItem — строка корзины (отображает порядковый номер, название, цену и кнопку удаления).
 
 #### Класс Basket
-Отображает содержимое корзины внутри модального окна.
+Отображает корзину целиком в модальном окне.
 
 Поля:
 - _list: HTMLElement — список товаров
-- orderButton: HTMLButtonElement — кнопка «Оформить заказ»
-- _totalPrice: HTMLElement — общая сумма.
-
-#### Класс BasketItem
-Отображает товар в списке корзины.
-
-Поля:
-- itemId: string — id товара
-- _count: HTMLElement — порядковый номер
-- _title: HTMLElement — название
-- _price: HTMLElement — цена
-- deleteButton: HTMLButtonElement — кнопка удаления
-
-Методы:
-- setCounter(value: number) — установить порядковый номер товара
+- _totalPrice: HTMLElement — общая сумма
+- orderButton: HTMLButtonElement — кнопка «Оформить заказ».
 
 #### Класс Page
-Отображает главную страницу с товарами и иконкой корзины.
+Главная страница приложения.
 
 Поля:
 - elementCounter: HTMLElement — счётчик товаров в корзине
 - buttonBasket: HTMLButtonElement — кнопка открытия корзины
-- galleryCard: HTMLElement — контейнер для карточек
+- galleryCard: HTMLElement — контейнер для карточек каталога.
 
 Методы:
-- setLocked(value: boolean) — блокировка страницы при открытом модальном окне
+- setLocked(value: boolean) — блокировка страницы при открытом модальном окне.
 
-#### Класс Form
-Базовый класс для форм. Генерирует событие при изменении полей и при отправке формы.
+##### Класс Form
+Базовый класс для всех форм.
 
 Поля:
 - _submit: HTMLButtonElement — кнопка отправки
-- _errors: HTMLElement — контейнер для сообщений об ошибках
+- _errors: HTMLElement — контейнер для сообщений об ошибках.
 
 Методы:
 - onInputChange(field: keyof T, value: string) — защищённый метод, эмитит событие изменения поля.
 
-#### Класс FormOrder 
-Реализует форму первого шага заказа (оплата и адрес).
-
-Поля:
-- paymentButtons: NodeListOf<HTMLButtonElement> — выбор способа оплаты
-- selectedPayment: string — текущий метод оплаты
+#### Класс FormOrder
+Форма первого шага заказа (оплата и адрес).
 
 Методы:
 - reset() — сброс введённых данных
+- Выбранный метод оплаты хранится в модели (OrderModel), а форма только отображает состояние.
 
 #### Класс FormContacts
-Реализует форму второго шага заказа (контактные данные).
+Форма второго шага заказа (контактные данные).
 
 Методы:
 - reset() — сброс введённых данных.
 
 #### Класс FormSuccess
-Компонент-уведомление об успешном заказе. Отображает общую сумму и кнопку закрытия.
+Компонент уведомления об успешном заказе.
+
+Поля:
+- total: number — сумма заказа
+- closeButton: HTMLButtonElement — кнопка закрытия.
 
 ### Презентер
 В проекте используется один презентер, код которого находится в index.ts.
