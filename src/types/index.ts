@@ -109,8 +109,8 @@ export type OrderPayload = {
   name: string;
   email: string;
   phone: string;
-  items: string[]; // массив ID товаров из корзины
-  total: number;   // общая сумма заказа
+  items: string[];
+  total: number;
 };
 
 export interface ICommerceAPI extends IApiClient {
@@ -120,21 +120,18 @@ export interface ICommerceAPI extends IApiClient {
 }
 
 /* ========== Компоненты ========== */
-// Список товаров
 export interface IProductListViewProps {
   products: IProduct[];
   onPreview: (productId: string) => void;
   onAddToCart: (productId: string) => void;
 }
 
-// Карточка товара
 export interface IProductCardProps {
   product: IProduct;
   onAddToCart: () => void;
   onPreview: () => void;
 }
 
-// Корзина целиком (контент для модалки)
 export interface IBasketProps {
   items: IProduct[];
   total: number;
@@ -142,7 +139,6 @@ export interface IBasketProps {
   onCheckout: () => void;
 }
 
-// Строка корзины
 export interface IBasketItemProps {
   index: number;
   id: string;
@@ -151,7 +147,6 @@ export interface IBasketItemProps {
   onDelete: (id: string) => void;
 }
 
-// Отдельное представление корзины (если используется)
 export interface ICartViewProps {
   items: IProduct[];
   total: number;
@@ -159,20 +154,17 @@ export interface ICartViewProps {
   onCheckout: () => void;
 }
 
-// Модалка
 export interface IModalProps {
   content: HTMLElement;
   onClose?: () => void;
 }
 
-// Главная страница
 export interface IPageProps {
   cartCount: number;
   onOpenCart: () => void;
   productList: HTMLElement;
 }
 
-// Форма — шаг 1 (оплата и адрес)
 export interface IOrderAddressFormProps {
   payment: PaymentMethod;
   address: string;
@@ -181,7 +173,6 @@ export interface IOrderAddressFormProps {
   errors?: string;
 }
 
-// Форма — шаг 2 (контакты)
 export interface IOrderContactsFormProps {
   name: string;
   email: string;
@@ -191,7 +182,6 @@ export interface IOrderContactsFormProps {
   errors?: string;
 }
 
-// Успех
 export interface IFormSuccessProps {
   total: number;
   onClose: () => void;
