@@ -41,9 +41,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
 async function init(): Promise<void> {
   try {
-    // API может вернуть массив или { total, items }
+    console.debug('API_URL =', API_URL);
+
     const raw = await api.getProducts();
     const list: IProduct[] = Array.isArray(raw) ? raw : [];
+    console.debug('Loaded products:', list.length, list[0]);
+
     products.setProducts(list);
 
     renderCatalog();
@@ -60,8 +63,6 @@ async function init(): Promise<void> {
 }
 
 // ----- каталог
-
-// фрагмент src/index.ts
 function renderCatalog(): void {
   try {
     ensureElement<HTMLTemplateElement>('#card-catalog');
@@ -94,7 +95,6 @@ function openPreview(productId: string): void {
 
   const inCart = cart.items.some((i) => i.id === p.id);
 
-  // держим именно экземпляр компонента превью
   const previewCmp = new ProductCardPreview(
     cloneTemplate<HTMLDivElement>('#card-preview'),
     {
@@ -117,7 +117,6 @@ function openPreview(productId: string): void {
 }
 
 // ----- корзина
-
 function openBasket(): void {
   try {
     ensureElement<HTMLTemplateElement>('#basket');
@@ -148,7 +147,6 @@ function openBasket(): void {
 }
 
 // ----- оформление заказа (2 шага)
-
 function openOrderStep1(): void {
   try {
     ensureElement<HTMLTemplateElement>('#order');
@@ -162,27 +160,28 @@ function openOrderStep1(): void {
     events
   );
 
-  // валидация шага 1
+  // Единая функция валидации шага 1 (адрес + способ оплаты)
   const validateStep1 = (): boolean => {
-    const ok = order.address.trim().length > 3 && !!order.payment;
-    formCmp.valid = ok;
-    return ok;
+    const addressOk = order.address.trim().length > 3;
+    const paymentOk = Boolean(order.payment);
+
+    formCmp.errors = addressOk ? '' : 'Необходимо указать адрес';
+    formCmp.valid = addressOk && paymentOk;
+
+    return formCmp.valid;
   };
 
-  // адрес меняется через базовую Form: 'order.address:change'
   events.on('order.address:change', (payload: { field: 'address'; value: string }) => {
     order.setAddress(payload.value);
     validateStep1();
   });
 
-  // выбор способа оплаты шлёт 'order.address:changed'
   events.on('order.address:changed', (payload: { payment: 'card' | 'cash'; address: string }) => {
     order.setPayment(payload.payment);
     order.setAddress(payload.address);
     validateStep1();
   });
 
-  // отправка шага 1
   events.on('order:submit', () => {
     if (!validateStep1()) return;
     openOrderStep2();
@@ -205,7 +204,6 @@ function openOrderStep2(): void {
     events
   );
 
-  // поля контактов (на случай наличия name/email/phone)
   events.on('contacts.name:change', (p: { field: 'name'; value: string }) => {
     order.setName(p.value);
   });
@@ -216,15 +214,15 @@ function openOrderStep2(): void {
     order.setPhone(p.value);
   });
 
-  // отправка шага 2
   events.on('contacts:submit', async () => {
     if (!order.validate()) {
       formCmp.errors = 'Проверьте адрес, способ оплаты, email/телефон';
+      formCmp.render({ valid: false, errors: formCmp.errors });
       return;
     }
 
     const payload: OrderPayload = {
-      payment: order.payment!,            // уже проверили в validate()
+      payment: order.payment!,
       address: order.address,
       name: order.name,
       email: order.email,
@@ -242,6 +240,7 @@ function openOrderStep2(): void {
     } catch (e) {
       console.error('Order failed', e);
       formCmp.errors = 'Не удалось оформить заказ. Попробуйте ещё раз.';
+      formCmp.render({ valid: true, errors: formCmp.errors });
     }
   });
 
@@ -266,7 +265,6 @@ function openSuccess(total: number): void {
 }
 
 // ----- header
-
 function updateHeader(): void {
   page.counter = cart.items.length;
 }

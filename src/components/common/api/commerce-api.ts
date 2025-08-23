@@ -1,4 +1,3 @@
-// src/components/common/api/commerce-api.ts
 import { Api, ApiListResponse } from '../../base/api';
 import { CDN_URL } from '../../../utils/constants';
 import type { IProduct, OrderPayload } from '../../../types';

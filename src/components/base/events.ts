@@ -1,3 +1,5 @@
+// src/components/base/events.ts
+
 // Хорошая практика даже простые типы выносить в алиасы
 // Зато когда захотите поменять это достаточно сделать в одном месте
 type EventName = string | RegExp;
@@ -19,7 +21,7 @@ export interface IEvents {
  * или слушать события по шаблону например
  */
 export class EventEmitter implements IEvents {
-    _events: Map<EventName, Set<Subscriber>>;
+    private _events: Map<EventName, Set<Subscriber>>;
 
     constructor() {
         this._events = new Map<EventName, Set<Subscriber>>();
@@ -28,36 +30,40 @@ export class EventEmitter implements IEvents {
     /**
      * Установить обработчик на событие
      */
-    on<T extends object>(eventName: EventName, callback: (event: T) => void) {
+    on<T extends object>(eventName: EventName, callback: (event: T) => void): void {
         if (!this._events.has(eventName)) {
             this._events.set(eventName, new Set<Subscriber>());
         }
-        this._events.get(eventName)?.add(callback);
+        this._events.get(eventName)!.add(callback as Subscriber);
     }
 
     /**
      * Снять обработчик с события
      */
-    off(eventName: EventName, callback: Subscriber) {
-        if (this._events.has(eventName)) {
-            this._events.get(eventName)!.delete(callback);
-            if (this._events.get(eventName)?.size === 0) {
-                this._events.delete(eventName);
-            }
+    off(eventName: EventName, callback: Subscriber): void {
+        if (!this._events.has(eventName)) return;
+        const set = this._events.get(eventName)!;
+        set.delete(callback);
+        if (set.size === 0) {
+            this._events.delete(eventName);
         }
     }
 
     /**
      * Инициировать событие с данными
      */
-    emit<T extends object>(eventName: string, data?: T) {
+    emit<T extends object>(eventName: string, data?: T): void {
         this._events.forEach((subscribers, name) => {
-            if (name === '*') subscribers.forEach(callback => callback({
-                eventName,
-                data
-            }));
-            if (name instanceof RegExp && name.test(eventName) || name === eventName) {
-                subscribers.forEach(callback => callback(data));
+            // слушатели всех событий
+            if (name === '*') {
+                subscribers.forEach(cb => (cb as (e: EmitterEvent) => void)({
+                    eventName,
+                    data
+                }));
+            }
+            // точное совпадение имени события или совпадение по RegExp
+            if ((name instanceof RegExp && name.test(eventName)) || name === eventName) {
+                subscribers.forEach(cb => (cb as (d: T) => void)(data as T));
             }
         });
     }
@@ -65,27 +71,28 @@ export class EventEmitter implements IEvents {
     /**
      * Слушать все события
      */
-    onAll(callback: (event: EmitterEvent) => void) {
-        this.on("*", callback);
+    onAll(callback: (event: EmitterEvent) => void): void {
+        // подсказка типам: это слушатель формата EmitterEvent
+        this.on<EmitterEvent>('*', callback);
     }
 
     /**
      * Сбросить все обработчики
      */
-    offAll() {
-        this._events = new Map<string, Set<Subscriber>>();
+    offAll(): void {
+        // сохраняем тот же дженерик Map<EventName, ...>, а не Map<string, ...>
+        this._events = new Map<EventName, Set<Subscriber>>();
     }
 
     /**
      * Сделать коллбек триггер, генерирующий событие при вызове
      */
-    trigger<T extends object>(eventName: string, context?: Partial<T>) {
-        return (event: object = {}) => {
-            this.emit(eventName, {
-                ...(event || {}),
+    trigger<T extends object>(eventName: string, context?: Partial<T>): (data: T) => void {
+        return (event: T) => {
+            this.emit<T>(eventName, {
+                ...(event as T),
                 ...(context || {})
-            });
+            } as T);
         };
     }
 }
-

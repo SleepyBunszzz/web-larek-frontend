@@ -50,6 +50,7 @@
     font-weight: 500;
     margin: 0;
     flex-grow: 1;
+    text-align: left;
   }
   &__text {
     text-align: left;
@@ -60,6 +61,7 @@
     border-radius: 2.5rem;
     margin-bottom: 12px;
     color: $primary;
+    align-self: flex-start;
 
     &_soft {
       background-color: $category1;
@@ -77,10 +79,11 @@
       background-color: $category4;
     }
   }
-  &__action {
+  // &__action {
 
-  }
+  // }
   &__price {
-
+    font-size: $mainFontSize;
+    text-align: left;
   }
 }
