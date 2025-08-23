@@ -21,12 +21,13 @@ import { OrderModel } from './components/common/models/order-model';
 import { buildBasketItem } from './components/common/basket-item';
 import { cloneTemplate, ensureElement } from './utils/utils';
 import { API_URL } from './utils/constants';
+
 import type { IProduct, OrderPayload } from './types';
+import { AppEvents } from './types';
 
 // ----- инфраструктура
 const events = new EventEmitter();
 const api = new CommerceAPI(API_URL, {});
-
 const page = new Page(document.body, events);
 const modal = new Modal(ensureElement('#modal-container'), events);
 
@@ -42,13 +43,11 @@ window.addEventListener('DOMContentLoaded', () => {
 async function init(): Promise<void> {
   try {
     console.debug('API_URL =', API_URL);
-
     const raw = await api.getProducts();
     const list: IProduct[] = Array.isArray(raw) ? raw : [];
     console.debug('Loaded products:', list.length, list[0]);
 
     products.setProducts(list);
-
     renderCatalog();
     updateHeader();
 
@@ -80,10 +79,9 @@ function renderCatalog(): void {
   }
 
   const cards = products.products.map((p) =>
-    new ProductCard(
-      cloneTemplate<HTMLButtonElement>('#card-catalog'),
-      { onPreview: openPreview }
-    ).render(p)
+    new ProductCard(cloneTemplate<HTMLButtonElement>('#card-catalog'), {
+      onPreview: openPreview,
+    }).render(p)
   );
 
   page.render({ counter: cart.items.length, catalog: cards, locked: false });
@@ -101,11 +99,9 @@ function openPreview(productId: string): void {
       onToggleCart: (id: string): void => {
         const prod = products.getProduct(id);
         if (!prod) return;
-
         const already = cart.items.some((i) => i.id === id);
         if (already) cart.removeItem(id);
         else cart.addItem(prod);
-
         updateHeader();
         previewCmp.render({ ...prod, inCart: !already });
       },
@@ -160,30 +156,22 @@ function openOrderStep1(): void {
     events
   );
 
-  // Единая функция валидации шага 1 (адрес + способ оплаты)
-  const validateStep1 = (): boolean => {
-    const addressOk = order.address.trim().length > 3;
-    const paymentOk = Boolean(order.payment);
+  // Дефолтная оплата и первичная валидация внутри формы
+  order.setPayment('card');        // модель знает про оплату
+  formCmp.setInitialPayment('card'); // форма знает про оплату и сама провалидируется
 
-    formCmp.errors = addressOk ? '' : 'Необходимо указать адрес';
-    formCmp.valid = addressOk && paymentOk;
+  // Слушаем единое событие для синхронизации модели (кнопку форма включает сама)
+  events.on(
+    AppEvents.ORDER_ADDRESS_CHANGED,
+    (payload: { payment: 'card' | 'cash' | null; address: string }) => {
+      if (payload.payment) order.setPayment(payload.payment);
+      order.setAddress(payload.address ?? '');
+    }
+  );
 
-    return formCmp.valid;
-  };
-
-  events.on('order.address:change', (payload: { field: 'address'; value: string }) => {
-    order.setAddress(payload.value);
-    validateStep1();
-  });
-
-  events.on('order.address:changed', (payload: { payment: 'card' | 'cash'; address: string }) => {
-    order.setPayment(payload.payment);
-    order.setAddress(payload.address);
-    validateStep1();
-  });
-
-  events.on('order:submit', () => {
-    if (!validateStep1()) return;
+  // Сабмит шага 1
+  events.on(AppEvents.ORDER_SUBMITTED, () => {
+    // На этом этапе форма уже включила кнопку, просто открываем шаг 2
     openOrderStep2();
   });
 

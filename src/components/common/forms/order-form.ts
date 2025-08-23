@@ -1,46 +1,94 @@
-// src/components/common/forms/order-form.ts
-import { Form } from '../form';
-import type { IEvents } from '../../base/events';
-import type { PaymentMethod } from '../../../types';            // <- фиксим путь
-import { ensureElement } from '../../../utils/utils';           // <- фиксим путь
+import { EventEmitter } from '../../base/events';
+import { AppEvents, PaymentMethod } from '../../../types';
 
-type OrderFields = { address: string; payment: PaymentMethod };
+export class OrderForm {
+  private el: HTMLFormElement;
+  private events: EventEmitter;
 
-export class OrderForm extends Form<OrderFields> {
-  private addressInput: HTMLInputElement;
-  private payCardBtn: HTMLButtonElement;
-  private payCashBtn: HTMLButtonElement;
+  private inputAddress: HTMLInputElement;
+  private btnCard: HTMLButtonElement;
+  private btnCash: HTMLButtonElement;
+  private submitBtn: HTMLButtonElement;
+  private errorsEl: HTMLElement | null;
 
-  constructor(container: HTMLFormElement, events: IEvents) {
-    super(container, events);
+  private currentPayment: PaymentMethod | null = null;
 
-    // <- добавляем дженерики, чтобы вернуть точные типы элементов
-    this.addressInput = ensureElement<HTMLInputElement>('input[name="address"]', container);
-    this.payCardBtn   = ensureElement<HTMLButtonElement>('button[name="card"]', container);
-    this.payCashBtn   = ensureElement<HTMLButtonElement>('button[name="cash"]', container);
+  constructor(container: HTMLFormElement, events: EventEmitter) {
+    this.el = container;
+    this.events = events;
 
-    const emit = () =>
-      this.events.emit('order.address:changed', {
-        payment: (this.payCardBtn.classList.contains('button_active') ? 'card' : 'cash') as PaymentMethod,
-        address: this.addressInput.value,
-      });
+    this.inputAddress = this.el.querySelector('input[name="address"]')!;
+    this.btnCard = this.el.querySelector('button[name="card"]')!;
+    this.btnCash = this.el.querySelector('button[name="cash"]')!;
+    this.submitBtn = this.el.querySelector('.order__button')!;
+    this.errorsEl = this.el.querySelector('.form__errors');
 
-    this.payCardBtn.addEventListener('click', () => {
-      this.payCardBtn.classList.add('button_active');
-      this.payCashBtn.classList.remove('button_active');
-      emit();
+    this.inputAddress.addEventListener('input', () => {
+      this.emitAddressChanged();
+      this.validateAndToggle();
     });
 
-    this.payCashBtn.addEventListener('click', () => {
-      this.payCashBtn.classList.add('button_active');
-      this.payCardBtn.classList.remove('button_active');
-      emit();
+    this.btnCard.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.setPayment('card');
+      this.emitAddressChanged();
+      this.validateAndToggle();
+    });
+
+    this.btnCash.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.setPayment('cash');
+      this.emitAddressChanged();
+      this.validateAndToggle();
+    });
+
+    this.el.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.validateAndToggle();
+      this.events.emit(AppEvents.ORDER_SUBMITTED);
     });
   }
 
-  reset() {
-    this.addressInput.value = '';
-    this.payCardBtn.classList.remove('button_active');
-    this.payCashBtn.classList.remove('button_active');
+  public setInitialPayment(method: PaymentMethod) {
+    this.setPayment(method);
+    this.emitAddressChanged();
+    this.validateAndToggle();
+  }
+
+  set valid(v: boolean) {
+    this.submitBtn.toggleAttribute('disabled', !v);
+  }
+
+  set errors(msg: string) {
+    if (this.errorsEl) this.errorsEl.textContent = msg ?? '';
+  }
+
+  render(opts: { valid: boolean; errors: string }) {
+    this.valid = opts.valid;
+    this.errors = opts.errors;
+    return this.el;
+  }
+
+
+  private setPayment(method: PaymentMethod) {
+    this.currentPayment = method;
+    this.btnCard.classList.toggle('button_alt-active', method === 'card');
+    this.btnCash.classList.toggle('button_alt-active', method === 'cash');
+  }
+
+  private emitAddressChanged() {
+    const address = this.inputAddress.value ?? '';
+    this.events.emit(AppEvents.ORDER_ADDRESS_CHANGED, {
+      payment: this.currentPayment,
+      address,
+    });
+  }
+
+  private validateAndToggle() {
+    const addressOk = (this.inputAddress.value ?? '').trim().length > 3;
+    const paymentOk = Boolean(this.currentPayment);
+
+    this.errors = addressOk ? '' : 'Необходимо указать адрес';
+    this.valid = addressOk && paymentOk;
   }
 }

@@ -1,27 +1,73 @@
-// src/components/common/forms/contacts-form.ts
-import { Form } from '../form';
-import type { IEvents } from '../../base/events';
+import { EventEmitter } from '../../base/events';
 import { ensureElement } from '../../../utils/utils';
 
-type ContactsFields = { name: string; email: string; phone: string };
+export class ContactsForm {
+  private el: HTMLFormElement;
+  private events: EventEmitter;
 
-export class ContactsForm extends Form<ContactsFields> {
-  private nameInput: HTMLInputElement;
-  private emailInput: HTMLInputElement;
-  private phoneInput: HTMLInputElement;
+  private inputEmail: HTMLInputElement;
+  private inputPhone: HTMLInputElement;
 
-  constructor(container: HTMLFormElement, events: IEvents) {
-    super(container, events);
+  private inputName: HTMLInputElement | null;
 
-    // указываем ожидаемые типы элементов явно
-    this.nameInput  = ensureElement<HTMLInputElement>('input[name="name"]', container);
-    this.emailInput = ensureElement<HTMLInputElement>('input[name="email"]', container);
-    this.phoneInput = ensureElement<HTMLInputElement>('input[name="phone"]', container);
+  private submitBtn: HTMLButtonElement;
+  private errorsEl: HTMLElement | null;
+
+  constructor(container: HTMLFormElement, events: EventEmitter) {
+    this.el = container;
+    this.events = events;
+
+    this.inputEmail = ensureElement<HTMLInputElement>('input[name="email"]', this.el);
+    this.inputPhone = ensureElement<HTMLInputElement>('input[name="phone"]', this.el);
+    this.submitBtn  = ensureElement<HTMLButtonElement>('button[type="submit"]', this.el);
+
+    this.inputName  = this.el.querySelector<HTMLInputElement>('input[name="name"]');
+    this.errorsEl   = this.el.querySelector<HTMLElement>('.form__errors');
+
+    this.inputEmail.addEventListener('input', () => {
+      this.events.emit('contacts.email:change', { field: 'email', value: this.inputEmail.value });
+      this.validateAndToggle();
+    });
+
+    this.inputPhone.addEventListener('input', () => {
+      this.events.emit('contacts.phone:change', { field: 'phone', value: this.inputPhone.value });
+      this.validateAndToggle();
+    });
+
+    this.inputName?.addEventListener('input', () => {
+      this.events.emit('contacts.name:change', { field: 'name', value: this.inputName!.value });
+      this.validateAndToggle();
+    });
+
+    this.el.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.validateAndToggle();
+      this.events.emit('contacts:submit');
+    });
   }
 
-  reset() {
-    this.nameInput.value = '';
-    this.emailInput.value = '';
-    this.phoneInput.value = '';
+  set valid(v: boolean) {
+    this.submitBtn.toggleAttribute('disabled', !v);
+  }
+
+  set errors(msg: string) {
+    if (this.errorsEl) this.errorsEl.textContent = msg ?? '';
+  }
+
+  render(opts: { valid: boolean; errors: string }) {
+    this.valid = opts.valid;
+    this.errors = opts.errors;
+    return this.el;
+  }
+
+  private validateAndToggle() {
+    const email = this.inputEmail.value.trim();
+    const phone = this.inputPhone.value.trim();
+
+    const emailOk = /\S+@\S+\.\S+/.test(email);
+    const phoneOk = /^\+?\d[\d\s()-]{5,}$/.test(phone);
+
+    this.valid = emailOk || phoneOk;
   }
 }
+

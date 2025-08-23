@@ -4,21 +4,7 @@ export interface IApiClient {
   post<T>(endpoint: string, data: unknown, method?: string): Promise<T>;
 }
 
-export interface IEventEmitter {
-  on<T extends keyof EventPayloads>(
-    event: T,
-    callback: (payload: EventPayloads[T]) => void
-  ): void;
-  emit<T extends keyof EventPayloads>(event: T, payload?: EventPayloads[T]): void;
-  off<T extends keyof EventPayloads>(
-    event: T,
-    callback: (payload: EventPayloads[T]) => void
-  ): void;
-  trigger<T extends keyof EventPayloads>(
-    event: T,
-    payload?: EventPayloads[T]
-  ): () => void;
-}
+export type PaymentMethod = 'card' | 'cash';
 
 /* ========== Данные ========== */
 export interface IProduct {
@@ -42,30 +28,46 @@ export enum AppEvents {
   PRODUCTS_LOADED = 'products:loaded',
   PRODUCT_PREVIEW = 'product:preview',
   CART_UPDATED = 'cart:updated',
-
-  ORDER_ADDRESS_CHANGED = 'order.address:changed',
-  ORDER_CONTACTS_CHANGED = 'order.contacts:changed',
-  ORDER_SUBMITTED = 'order:submitted',
-
-  FORM_ERROR = 'form:error',
-
+  BASKET_OPEN = 'basket:open',
+  ORDER_OPEN = 'order:open',
   MODAL_OPEN = 'modal:open',
   MODAL_CLOSE = 'modal:close',
+
+  // Оформление заказа (шаг 1)
+  ORDER_ADDRESS_CHANGED = 'order.address:changed',
+  ORDER_SUBMITTED = 'order:submitted',
+  ORDER_CHANGED = 'order:changed',
+
+  // Контакты (шаг 2)
+  CONTACTS_NAME_CHANGED = 'contacts.name:change',
+  CONTACTS_EMAIL_CHANGED = 'contacts.email:change',
+  CONTACTS_PHONE_CHANGED = 'contacts.phone:change',
+  CONTACTS_SUBMIT = 'contacts:submit',
+  ORDER_CONTACTS_CHANGED = 'order.contacts:changed',
+  FORM_ERROR = 'form:error',
 }
 
 export type EventPayloads = {
   [AppEvents.PRODUCTS_LOADED]: IProduct[];
   [AppEvents.PRODUCT_PREVIEW]: IProduct | null;
   [AppEvents.CART_UPDATED]: IProduct[];
-
-  [AppEvents.ORDER_ADDRESS_CHANGED]: { payment: PaymentMethod; address: string };
-  [AppEvents.ORDER_CONTACTS_CHANGED]: { name: string; email: string; phone: string };
-  [AppEvents.ORDER_SUBMITTED]: undefined;
-
-  [AppEvents.FORM_ERROR]: { message: string };
-
+  [AppEvents.BASKET_OPEN]: undefined;
+  [AppEvents.ORDER_OPEN]: undefined;
   [AppEvents.MODAL_OPEN]: { content?: HTMLElement } | undefined;
   [AppEvents.MODAL_CLOSE]: undefined;
+
+  // Оформление заказа (шаг 1)
+  [AppEvents.ORDER_ADDRESS_CHANGED]: { payment: PaymentMethod | null; address: string };
+  [AppEvents.ORDER_SUBMITTED]: undefined;
+  [AppEvents.ORDER_CHANGED]: undefined;
+
+  // Контакты (шаг 2)
+  [AppEvents.CONTACTS_NAME_CHANGED]: { field: 'name'; value: string };
+  [AppEvents.CONTACTS_EMAIL_CHANGED]: { field: 'email'; value: string };
+  [AppEvents.CONTACTS_PHONE_CHANGED]: { field: 'phone'; value: string };
+  [AppEvents.CONTACTS_SUBMIT]: undefined;
+  [AppEvents.ORDER_CONTACTS_CHANGED]: { name: string; email: string; phone: string };
+  [AppEvents.FORM_ERROR]: { message: string };
 };
 
 /* ========== Модели ========== */
@@ -85,10 +87,8 @@ export interface ICartModel {
   getTotal(): number;
 }
 
-export type PaymentMethod = 'card' | 'cash';
-
 export interface IOrderModel {
-  payment: PaymentMethod;
+  payment: PaymentMethod | null;
   address: string;
   name: string;
   email: string;
@@ -104,7 +104,7 @@ export interface IOrderModel {
 
 /* ========== API ========== */
 export type OrderPayload = {
-  payment: 'card' | 'cash';
+  payment: PaymentMethod;
   address: string;
   name: string;
   email: string;
@@ -166,18 +166,20 @@ export interface IPageProps {
 }
 
 export interface IOrderAddressFormProps {
-  payment: PaymentMethod;
+  payment: PaymentMethod | null;
   address: string;
-  onChange: (data: { payment: PaymentMethod; address: string }) => void;
+  onChange: (data: { payment: PaymentMethod | null; address: string }) => void;
   onNext: () => void;
   errors?: string;
 }
 
 export interface IOrderContactsFormProps {
-  name: string;
+  name?: string;
   email: string;
   phone: string;
-  onChange: (data: { name: string; email: string; phone: string }) => void;
+  onChange:
+    | ((data: { name: string; email: string; phone: string }) => void)
+    | ((data: { field: 'name' | 'email' | 'phone'; value: string }) => void);
   onSubmit: () => void;
   errors?: string;
 }

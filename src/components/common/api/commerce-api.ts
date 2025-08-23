@@ -29,7 +29,6 @@ export class CommerceAPI extends Api {
     };
   }
 
-  // 👉 пробуем /product, если не вышло — /products; понимаем и массив, и {items}
   async getProducts(): Promise<IProduct[]> {
     const raw =
       await this.getJSON<unknown>('/product').catch(() =>
@@ -41,8 +40,6 @@ export class CommerceAPI extends Api {
       : (raw as ApiListResponse<unknown> | undefined)?.items ?? [];
 
     const normalized = (items as unknown[]).map((it): IProduct => this.normalizeProduct(it));
-    // полезно увидеть, что именно пришло
-    // eslint-disable-next-line no-console
     console.debug('[getProducts] count:', normalized.length, normalized[0]);
     return normalized;
   }

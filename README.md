@@ -58,20 +58,28 @@ IProduct — товар каталога
 id: string — идентификатор;
 name: string — название;
 cost: number — цена;
-desc?: string — описание (опционально);
-img_url: string — изображение;
+desc?: string — описание;
+img_url: string — ссылка на изображение;
 category: string — категория.
 ```
 
-IOrder — данные покупателя
+IOrderModel — состояние заказа
 
 ```
-payment: 'card' | 'cash' — способ оплаты;
+payment: 'card' | 'cash' | null  // способ оплаты (может быть null до выбора)
 address: string — адрес доставки;
 name: string — имя покупателя;
 email: string — e-mail;
 phone: string — телефон.
 ```
+
+Методы:
+- setPayment(method) — выбрать способ оплаты
+- setAddress(value) — сохранить адрес
+- setName(value) — сохранить имя
+- setEmail(value) — сохранить email
+- setPhone(value) — сохранить телефон
+- validate() — проверяет, что заполнен адрес, выбран способ оплаты и указан либо корректный email, либо телефо
 
 OrderPayload — данные заказа для API:
 
@@ -136,7 +144,7 @@ total: number — сумма заказа.
 #### Класс OrderModel
 Хранит данные для оформления заказа и проверяет их корректность.
 Поля:
-- payment: PaymentMethod — способ оплаты ('card' | 'cash')
+- payment: 'card' | 'cash' | null — способ оплаты
 - address: string - адрес доставки
 - name: string - имя покупателя (отображается в заказе)
 - email: string - электронная почта покупателя
@@ -144,11 +152,11 @@ total: number — сумма заказа.
 
 
 Методы:
-- setPayment(method: PaymentMethod): void — сохранить выбранный способ оплаты
-- setAddress(address: string): void — сохранить адрес доставки
-- setName(name: string): void — сохранить имя покупателя
-- setEmail(email: string): void — сохранить электронную почту
-- setPhone(phone: string): void — сохранить телефон
+- setPayment(method): void — сохранить выбранный способ оплаты
+- setAddress(value): void — сохранить адрес доставки
+- setName(value): void — сохранить имя покупателя
+- setEmail(value): void — сохранить электронную почту
+- setPhone(value): void — сохранить телефон
 - validate(): boolean — проверяет заполненность и корректность всех полей (адрес, имя, email, телефон, метод оплаты).
 
 ### API слой
@@ -157,9 +165,9 @@ total: number — сумма заказа.
 Расширяет IApiClient
 
 Методы:
-- getProducts(): Promise<IProduct[]> — получает список всех товаров
-- getProductById(id: string): Promise<IProduct> — получает один товар по ID
-- createOrder(order: OrderPayload) — оформить заказ.
+- getProducts() — получает список всех товаров
+- getProductById(id) — получает один товар по ID
+- createOrder(order) — оформить заказ.
 
 OrderPayload включает:
 - payment: 'card' | 'cash'
@@ -176,13 +184,10 @@ OrderPayload включает:
 Базовый абстрактный класс для всех View.
 
 Методы:
-- toggleClass(element, className, force?) — переключение класса DOM-элемента
-- setText(element, value) — установка текстового содержимого
-- setDisabled(element, state) — включение/отключение кнопки
-- setHidden(element) — скрытие элемента (display: none)
-- setVisible(element) — показать элемент (снять display: none)
-- setImage(img, src, alt?) — установка src и alt для <img>
-- render(container) — отрисовка компонента.
+- setText(el, text) — текст в элемент
+- setImage(img, src, alt?) — картинка
+- setDisabled(el, state) — включить/выключить кнопку
+- render(data) — отрисовка
 
 #### Класс Modal
 Реализует модальное окно. Управляет открытием/закрытием, устанавливает слушатели на клик по фону и кнопке-крестику.
@@ -195,71 +200,165 @@ OrderPayload включает:
 Методы:
 - open() — открыть модалку
 - close() — закрыть модалку
-- set content(value: HTMLElement) — заменить содержимое
+- content = element — вставить содержимое
 
-#### Класс ProductView
-Базовый класс для отображения товара.
+#### Класс ProductCard
+Карточка товара в каталоге (кликабельна — открывает предпросмотр).
 
-Поля:
-- id: string — идентификатор товара.
-- title: HTMLElement — название
-- category: HTMLElement — категория
-- price: HTMLElement — цена
-- image: HTMLImageElement — изображение.
+Поля
+- title?: HTMLElement — .card__title
+- category?: HTMLElement — .card__category
+- price?: HTMLElement — .card__price
+- image?: HTMLImageElement — .card__image
+- props?: { onPreview?: (id: string) => void } — колбэк на открытие превью
 
-Наследники:
-- ProductCard — карточка товара в каталоге
-- ProductCardPreview — предпросмотр товара (дополнительно содержит кнопку «Купить / Убрать из корзины»)
-- BasketItem — строка корзины (отображает порядковый номер, название, цену и кнопку удаления).
+Методы
+- constructor(container: HTMLElement, props?: { onPreview?: (id: string) => void })
+- Вешает обработчик клика на всю карточку. По клику берёт this.el.dataset.id и вызывает props.onPreview(id).
+- render(data: IProduct): HTMLElement
+- Проставляет data-id.
+- Устанавливает текст/картинку: title, category, price, image.
+- Возвращает контейнер.
+
+#### Класс ProductCardPreview
+Карточка предпросмотра: картинка, описание, категория, цена и кнопка покупки/удаления из корзины.
+
+Поля
+- title?: HTMLElement — .card__title
+- text?: HTMLElement — .card__text, .card__description
+- price?: HTMLElement — .card__price
+- image?: HTMLImageElement — .card__image
+- category?: HTMLElement — .card__category
+- btn?: HTMLButtonElement — .card__button или [data-role="toggle-cart"]
+- props: { onToggleCart: (id: string) => void } — колбэк на добавление/удаление из корзины
+
+Методы
+- constructor(container: HTMLElement, props: { onToggleCart: (id: string) => void }) - Вешает обработчик на кнопку: читает this.el.dataset.id и вызывает onToggleCart(id).
+- render(data: IProduct & { inCart?: boolean }): HTMLElement - Проставляет data-id. Oбновляет title, text, price, category, image. Изменяет текст кнопки:если inCart === true → «Убрать из корзины» иначе → «Купить»
+- Возвращает контейнер.
 
 #### Класс Basket
-Отображает корзину целиком в модальном окне.
+Модальное представление корзины.
 
-Поля:
-- _list: HTMLElement — список товаров
-- _totalPrice: HTMLElement — общая сумма
-- orderButton: HTMLButtonElement — кнопка «Оформить заказ».
+Поля
+- _list: HTMLElement — .basket__list
+- _total: HTMLElement | null — .basket__price или .basket__total
+- _button: HTMLElement | null — .basket__button или .basket__action
+- events: EventEmitter — брокер событий, приходит в конструктор
+
+Методы
+- constructor(container: HTMLElement, events: EventEmitter) - На кнопку _button вешает клик → events.emit('order:open').
+- set items(items: HTMLElement[]) - Рендерит список; при пустом — вставляет <p>Корзина пуста</p>.
+- set selected(items: string[]) - Делает кнопку неактивной, если в корзине пусто (items.length === 0).
+- set total(total: number) - Выводит сумму в _total (через formatNumber).
+- render(data: { items: HTMLElement[]; total: number; selected: string[] }): HTMLElemen - Вызывает перечисленные сеттеры и возвращает контейнер.
+
+#### Класс» BasketItem
+Функциональный конструктор элемента списка корзины из шаблона #card-basket.
+Клонирует <template id="card-basket">.
+
+Заполняет:
+- .basket__item-index — порядковый номер
+- .card__title — название
+- .card__price — цена (formatNumber)
+- Вешает обработчик на кнопку удаления: селектор .basket__item-delete, .card__button → onDelete(product.id).
+- Возвращает готовый <li>.
 
 #### Класс Page
-Главная страница приложения.
+Контейнер главной страницы: каталог, кнопка корзины, счётчик, блокировка скролла при открытии модалки.
 
-Поля:
-- elementCounter: HTMLElement — счётчик товаров в корзине
-- buttonBasket: HTMLButtonElement — кнопка открытия корзины
-- galleryCard: HTMLElement — контейнер для карточек каталога.
+Поля
+- _counter: HTMLElement — .header__basket-counter
+- _catalog: HTMLElement — .gallery
+- _wrapper: HTMLElement — .page__wrapper
+- _basket: HTMLElement — .header__basket
+- events: IEvents
 
-Методы:
-- setLocked(value: boolean) — блокировка страницы при открытом модальном окне.
+Методы
+- constructor(container: HTMLElement, events: IEvents) - Вешает клик на _basket → events.emit('basket:open').
+- set counter(value: number) - Обновляет число в шапке.
+- set catalog(items: HTMLElement[]) - Перерисовывает каталог (replaceChildren).
+- set locked(value: boolean) - Тогглит класс .page__wrapper_locked.
+- render(data: { counter: number; catalog: HTMLElement[]; locked: boolean }): HTMLElement - Вызывает сеттеры и возвращает контейнер.
 
-##### Класс Form
-Базовый класс для всех форм.
+#### Form<TFields>
+Абстрактная обвязка для форм: общая логика ввода/сабмита, кнопка submit, вывод ошибок.
 
-Поля:
-- _submit: HTMLButtonElement — кнопка отправки
-- _errors: HTMLElement — контейнер для сообщений об ошибках.
+Поля
+- _submit: HTMLButtonElement — button[type=submit]
+- _errors: HTMLElement — .form__errors
+- events: IEvents
+- container: HTMLFormElement
 
-Методы:
-- onInputChange(field: keyof T, value: string) — защищённый метод, эмитит событие изменения поля.
+Методы
+- constructor(container: HTMLFormElement, events: IEvents)- Подписка на: input → эмитит ${form.name}.${field}:change с { field, value } и submit → эмитит ${form.name}:submit
+- protected onInputChange(field: keyof TFields, value: string) - Вынесенный эмит изменения поля.
+- set valid(value: boolean) - Включает/выключает кнопку сабмита.
+- set errors(value: string) - Выводит текст ошибки.
+- render(state: Partial<TFields> & { valid: boolean; errors: string }): HTMLElement - Проставляет валидность/ошибки, мержит прочие поля в инстанс, возвращает контейнер.
 
-#### Класс FormOrder
-Форма первого шага заказа (оплата и адрес).
+В проекте конкретные формы (OrderForm, ContactsForm) реализованы как отдельные классы, а не наследники Form<T>, но поведение схожее.
 
-Методы:
-- reset() — сброс введённых данных
-- Выбранный метод оплаты хранится в модели (OrderModel), а форма только отображает состояние.
+#### Класс OrderForm
+Форма первого шага: способ оплаты + адрес. Сама включает/выключает кнопку «Далее» при валидных данных.
 
-#### Класс FormContacts
-Форма второго шага заказа (контактные данные).
+Поля
+- el: HTMLFormElement
+- events: EventEmitter
+- inputAddress: HTMLInputElement — input[name="address"]
+- btnCard: HTMLButtonElement — button[name="card"]
+- btnCash: HTMLButtonElement — button[name="cash"]
+- submitBtn: HTMLButtonElement — .order__button
+- errorsEl: HTMLElement | null — .form__errors
+- currentPayment: PaymentMethod | null — выбранный способ оплаты
 
-Методы:
-- reset() — сброс введённых данных.
+Методы
+- constructor(container: HTMLFormElement, events: EventEmitter) - Слушает:
+ввод адреса → emitAddressChanged() + validateAndToggle()
+клик «Онлайн» → setPayment('card') → emitAddressChanged() → validateAndToggle()
+клик «При получении» → setPayment('cash') → emitAddressChanged() → validateAndToggle()
+submit → validateAndToggle() → events.emit(AppEvents.ORDER_SUBMITTED)
+- setInitialPayment(method: PaymentMethod): void - Выставляет оплату по умолчанию (подсветка кнопки), эмитит событие и запускает валидацию.
+- set valid(v: boolean) - Активирует/деактивирует «Далее».
+- set errors(msg: string) - Пишет текст ошибки (или очищает).
+- render(opts: { valid: boolean; errors: string }): HTMLElement - Применяет состояние и возвращает форму.
 
-#### Класс FormSuccess
-Компонент уведомления об успешном заказе.
+#### Класс ContactsForm
+Форма второго шага: контакты. Поддерживает опциональное поле name (может отсутствовать в шаблоне). Кнопка «Оплатить» активируется, когда валиден email или телефон.
 
-Поля:
-- total: number — сумма заказа
-- closeButton: HTMLButtonElement — кнопка закрытия.
+Поля
+- el: HTMLFormElement
+- events: EventEmitter
+- inputEmail: HTMLInputElement — input[name="email"]
+- inputPhone: HTMLInputElement — input[name="phone"]
+- inputName: HTMLInputElement | null — input[name="name"] (может быть null)
+- submitBtn: HTMLButtonElement — button[type="submit"]
+- errorsEl: HTMLElement | null — .form__errors
+
+Методы
+- constructor(container: HTMLFormElement, events: EventEmitter) - Слушает:
+ввод email → events.emit('contacts.email:change', { field:'email', value }) + validateAndToggle()
+ввод phone → events.emit('contacts.phone:change', { field:'phone', value }) + validateAndToggle()
+ввод name (если поле есть) → events.emit('contacts.name:change', { field:'name', value }) + validateAndToggle()
+submit → validateAndToggle() → events.emit('contacts:submit')
+
+- set valid(v: boolean) - Активирует/деактивирует «Оплатить».
+- set errors(msg: string) - Пишет текст ошибки.
+- render(opts: { valid: boolean; errors: string }): HTMLElement - Применяет состояние и возвращает форму.
+
+
+#### Класс SuccessView
+Экран успешного заказа.
+
+Поля
+- totalEl: HTMLElement — .order-success__description
+- closeBtn: HTMLButtonElement — .order-success__close
+
+Методы
+- constructor(container: HTMLElement) - Находит элементы, не вешает свои события (колбэк приходит в render).
+- render(data: { total: number; onClose: () => void }): HTMLElement - Пишет сумму: Списано {total} (через formatNumber).
+- Вешает клик на кнопку закрытия (once: true) → вызывает onClose().
+- Возвращает контейнер.
 
 ### Презентер
 В проекте используется один презентер, код которого находится в index.ts.

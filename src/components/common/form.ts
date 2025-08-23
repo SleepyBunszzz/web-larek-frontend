@@ -1,11 +1,10 @@
-// src/components/common/form.ts
 import { Component } from '../base/component';
 import { IEvents } from '../base/events';
 import { ensureElement } from '../../utils/utils';
 
 interface IFormState {
   valid: boolean;
-  errors: string; // строка (под твой сеттер)
+  errors: string;
 }
 
 export class Form<TFields extends Record<string, unknown>> extends Component<IFormState> {
@@ -27,7 +26,6 @@ export class Form<TFields extends Record<string, unknown>> extends Component<IFo
 
     this.container.addEventListener('submit', (e: Event) => {
       e.preventDefault();
-      // payload у emit опциональный — вызывать без второго аргумента нормально
       this.events.emit(`${this.container.name}:submit`);
     });
   }

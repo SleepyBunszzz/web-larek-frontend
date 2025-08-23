@@ -38,7 +38,7 @@ export class ProductCardPreview extends Component<PreviewData> {
     this.setText(this.category, data.category);
     this.setImage(this.image, data.img_url, data.name);
 
-    if (this.btn) this.btn.textContent = data.inCart ? 'Убрать из корзины' : 'В корзину';
+    if (this.btn) this.btn.textContent = data.inCart ? 'Убрать из корзины' : 'Купить';
 
     return this.el;
   }
