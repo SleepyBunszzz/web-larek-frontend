@@ -2,10 +2,26 @@ import { Api, ApiListResponse } from '../../base/api';
 import { CDN_URL } from '../../../utils/constants';
 import type { IProduct, OrderPayload } from '../../../types';
 
+// 👉 Вставляем сюда
+type RawProduct = Partial<{
+  id: string;
+  name: string;
+  title: string;
+  cost: number;
+  price: number;
+  desc: string;
+  description: string;
+  img_url: string;
+  image: string;
+  imageUrl: string;
+  category: string;
+}>;
+
 export class CommerceAPI extends Api {
   private getJSON<T>(uri: string): Promise<T> {
     return super.get(uri) as Promise<T>;
   }
+
   private postJSON<T>(uri: string, body: object): Promise<T> {
     return super.post(uri, body) as Promise<T>;
   }
@@ -17,18 +33,16 @@ export class CommerceAPI extends Api {
     return `${cdn}/${String(path).replace(/^\/+/, '')}`;
   }
 
-  private normalizeProduct(raw: unknown): IProduct {
-    const r = raw as Record<string, unknown>;
-    return {
-      id: String(r.id ?? ''),
-      name: String((r as any).name ?? (r as any).title ?? ''),
-      cost: Number((r as any).cost ?? (r as any).price ?? 0),
-      desc: (r as any).desc ?? (r as any).description ?? '',
-      img_url: this.toCdn((r as any).img_url ?? (r as any).image ?? (r as any).imageUrl),
-      category: String((r as any).category ?? 'other'),
-    };
-  }
-
+private normalizeProduct(raw: RawProduct): IProduct {
+  return {
+    id: String(raw.id ?? ''),
+    name: String(raw.name ?? raw.title ?? ''),
+    cost: Number(raw.cost ?? raw.price ?? 0),
+    desc: raw.desc ?? raw.description ?? '',
+    img_url: this.toCdn(raw.img_url ?? raw.image ?? raw.imageUrl),
+    category: String(raw.category ?? 'other'),
+  };
+}
   async getProducts(): Promise<IProduct[]> {
     const raw =
       await this.getJSON<unknown>('/product').catch(() =>
