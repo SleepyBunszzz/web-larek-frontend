@@ -1,0 +1,11 @@
+@use "variables" as *;
+
+.card__category {
+  background: $primaryLight;
+
+  &.card__category_soft { background: $category1; }
+  &.card__category_other { background: $category2; }
+  &.card__category_extra { background: $category3; }
+  &.card__category_button { background: $category4; }
+  &.card__category_hard { background: $category5; }
+}

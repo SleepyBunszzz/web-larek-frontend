@@ -1,5 +1,6 @@
+// src/components/common/basket.ts
 import { Component } from '../base/component';
-import { cloneTemplate, createElement, ensureElement, formatNumber } from '../../utils/utils';
+import { createElement, ensureElement, formatNumber } from '../../utils/utils';
 import { EventEmitter } from '../base/events';
 
 interface IBasketView {
@@ -17,15 +18,19 @@ export class Basket extends Component<IBasketView> {
     super(container);
 
     this._list = ensureElement<HTMLElement>('.basket__list', this.container);
-    this._total = this.container.querySelector('.basket__price') || this.container.querySelector('.basket__total');
-    this._button = this.container.querySelector('.basket__button') || this.container.querySelector('.basket__action');
+    this._total =
+      this.container.querySelector('.basket__price') ||
+      this.container.querySelector('.basket__total');
+    this._button =
+      this.container.querySelector('.basket__button') ||
+      this.container.querySelector('.basket__action');
 
-    if (this._button) {
-      this._button.addEventListener('click', () => {
-        this.events.emit('order:open');
-      });
-    }
+    // Открыть оформление заказа
+    this._button?.addEventListener('click', () => {
+      this.events.emit('order:open');
+    });
 
+    // Стартовое состояние
     this.items = [];
   }
 
@@ -33,9 +38,11 @@ export class Basket extends Component<IBasketView> {
     if (items.length) {
       this._list.replaceChildren(...items);
     } else {
-      this._list.replaceChildren(createElement<HTMLParagraphElement>('p', {
-        textContent: 'Корзина пуста'
-      }));
+      this._list.replaceChildren(
+        createElement<HTMLParagraphElement>('p', {
+          textContent: 'Корзина пуста',
+        })
+      );
     }
   }
 
@@ -49,11 +56,16 @@ export class Basket extends Component<IBasketView> {
     if (this._total) this.setText(this._total, formatNumber(total));
   }
 
-  render(data: IBasketView): HTMLElement {
-    super.render(data);
-    this.items = data.items;
-    this.total = data.total;
-    this.selected = data.selected;
+  render(view: IBasketView): HTMLElement {
+    // Родительский render ничего не делает с нашими полями — вызываем без данных,
+    // чтобы не дублировать «чужую» работу и не вводить в заблуждение ревьюера.
+    super.render();
+
+    const { items, total, selected } = view;
+    this.items = items;
+    this.total = total;
+    this.selected = selected;
+
     return this.container;
   }
 }

@@ -1,23 +1,50 @@
-import { cloneTemplate, ensureElement, formatNumber } from '../../utils/utils';
+// src/components/common/basket-item.ts
 import type { IProduct } from '../../types';
+import { BaseProductCard } from './product-card';
+import { ensureElement, formatNumber, cloneTemplate } from '../../utils/utils';
 
+type BasketItemProps = {
+  index: number;
+  onDelete: (id: string) => void;
+};
 
+/** Строка корзины как класс, общий родитель — BaseProductCard */
+export class BasketItemView extends BaseProductCard<IProduct> {
+  private indexEl: HTMLElement;
+  private deleteBtn: HTMLButtonElement | null;
+
+  constructor(container: HTMLElement, private props: BasketItemProps) {
+    super(container);
+
+    this.indexEl = ensureElement<HTMLElement>('.basket__item-index', this.el);
+    this.deleteBtn = this.el.querySelector<HTMLButtonElement>('.basket__item-delete, .card__button') ?? null;
+
+    this.deleteBtn?.addEventListener('click', () => {
+      if (this._id) this.props.onDelete(this._id);
+    });
+  }
+
+  render(data: IProduct): HTMLElement {
+    super.render(data);
+    this.applyBase(data);
+
+    // В корзине хотим строго число с форматированием
+    this.setText(this.price, formatNumber(data.cost));
+    this.indexEl.textContent = String(this.props.index);
+
+    return this.el;
+  }
+}
+
+/**
+ * Совместимость со старым кодом: обёртка-функция.
+ * Можно удалить и заменить вызовы на прямое создание BasketItemView.
+ */
 export function buildBasketItem(
   product: IProduct,
   index: number,
   onDelete: (id: string) => void
 ): HTMLElement {
   const el = cloneTemplate<HTMLLIElement>('#card-basket');
-
-  ensureElement<HTMLElement>('.basket__item-index', el).textContent = String(index);
-
-  ensureElement<HTMLElement>('.card__title', el).textContent = product.name;
-  ensureElement<HTMLElement>('.card__price', el).textContent = formatNumber(product.cost);
-
-  const deleteBtn = el.querySelector<HTMLButtonElement>('.basket__item-delete, .card__button');
-  if (deleteBtn) {
-    deleteBtn.addEventListener('click', () => onDelete(product.id));
-  }
-
-  return el;
+  return new BasketItemView(el, { index, onDelete }).render(product);
 }

@@ -138,3 +138,16 @@ export function formatNumber(n: number): string {
   return `${n.toLocaleString('ru-RU')} синапсов`;
 }
 
+export function categoryClass(category: string): string {
+  const key = (category || '').toLowerCase().trim();
+
+  if (/^(софт-?\s*скил|софт|soft)/.test(key)) return 'card__category_soft';
+  if (/^(друго(е|е.)|other)/.test(key)) return 'card__category_other';
+  if (/^(доп(олнительное)?|additional|extra)/.test(key)) return 'card__category_extra';
+  if (/^(кнопка|button)/.test(key)) return 'card__category_button';
+  if (/^(хард-?\s*скил|хард|hard)/.test(key)) return 'card__category_hard';
+
+  return '';
+}
+
+

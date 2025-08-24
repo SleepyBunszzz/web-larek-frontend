@@ -1,44 +1,52 @@
-import { Component } from '../base/component';
-import { IProduct } from '../../types';
+// src/components/common/product-card-preview.ts
+import type { IProduct } from '../../types';
+import { BaseProductCard } from './product-card';
 import { formatNumber } from '../../utils/utils';
 
 type PreviewData = IProduct & { inCart?: boolean };
 type PreviewProps = { onToggleCart: (id: string) => void };
 
-export class ProductCardPreview extends Component<PreviewData> {
-  private title?: HTMLElement;
+/** Карточка предпросмотра товара */
+export class ProductCardPreview extends BaseProductCard<PreviewData> {
   private text?: HTMLElement;
-  private price?: HTMLElement;
-  private image?: HTMLImageElement;
   private btn?: HTMLButtonElement;
-  private category?: HTMLElement;
 
   constructor(container: HTMLElement, private props: PreviewProps) {
     super(container);
 
-    this.title = container.querySelector('.card__title') ?? undefined;
-    this.text = container.querySelector('.card__text, .card__description') ?? undefined;
-    this.price = container.querySelector('.card__price') ?? undefined;
-    this.image = container.querySelector<HTMLImageElement>('.card__image') ?? undefined;
-    this.category = container.querySelector('.card__category') ?? undefined;
-    this.btn = container.querySelector<HTMLButtonElement>('.card__button, [data-role="toggle-cart"]') ?? undefined;
+    this.text = this.el.querySelector('.card__text, .card__description') ?? undefined;
+    this.btn = this.el.querySelector<HTMLButtonElement>('.card__button, [data-role="toggle-cart"]') ?? undefined;
 
     this.btn?.addEventListener('click', () => {
-      const id = this.el.dataset.id;
-      if (id) this.props.onToggleCart(id);
+      if (this._id) this.props.onToggleCart(this._id);
     });
   }
 
   render(data: PreviewData): HTMLElement {
-    this.el.dataset.id = data.id;
+    super.render(data);
 
-    this.setText(this.title, data.name);
-    this.setText(this.text, data.desc || '');
-    this.setText(this.price, formatNumber(data.cost));
-    this.setText(this.category, data.category);
-    this.setImage(this.image, data.img_url, data.name);
+    // Базовые поля (название/категория/картинка/цена)
+    this.applyBase(data);
 
-    if (this.btn) this.btn.textContent = data.inCart ? 'Убрать из корзины' : 'Купить';
+    // Текст описания
+    if (this.text) this.setText(this.text, data.desc || '');
+
+    // Цена: «Бесценно» при 0 (перезаписываем, так как база поставила число)
+    const priceText = data.cost > 0 ? formatNumber(data.cost) : 'Бесценно';
+    this.setText(this.price, priceText);
+
+    // Кнопка: «Недоступно» при 0, иначе «Купить»/«Убрать из корзины»
+    if (this.btn) {
+      if (data.cost <= 0) {
+        this.btn.textContent = 'Недоступно';
+        this.setDisabled(this.btn, true);
+        this.btn.classList.add('is-disabled');
+      } else {
+        this.setDisabled(this.btn, false);
+        this.btn.classList.remove('is-disabled');
+        this.btn.textContent = data.inCart ? 'Убрать из корзины' : 'Купить';
+      }
+    }
 
     return this.el;
   }

@@ -1,3 +1,4 @@
+// src/components/common/page.ts
 import { Component } from '../base/component';
 import { IEvents } from '../base/events';
 import { ensureElement } from '../../utils/utils';
@@ -40,11 +41,15 @@ export class Page extends Component<IPageState> {
     this._wrapper.classList.toggle('page__wrapper_locked', value);
   }
 
-  render(data: IPageState): HTMLElement {
-    super.render(data);
-    this.counter = data.counter;
-    this.catalog = data.catalog;
-    this.locked = data.locked;
+  render(view: IPageState): HTMLElement {
+    // базовый render ничего не делает с нашими полями — вызываем без аргумента
+    super.render();
+
+    const { counter, catalog, locked } = view;
+    this.counter = counter;
+    this.catalog = catalog;
+    this.locked = locked;
+
     return this.el;
   }
 }

@@ -22,7 +22,7 @@ import { buildBasketItem } from './components/common/basket-item';
 import { cloneTemplate, ensureElement } from './utils/utils';
 import { API_URL } from './utils/constants';
 
-import type { IProduct, OrderPayload } from './types';
+import type { OrderPayload } from './types';
 import { AppEvents } from './types';
 
 // ----- инфраструктура
@@ -44,8 +44,8 @@ async function init(): Promise<void> {
   try {
     console.debug('API_URL =', API_URL);
     const raw = await api.getProducts();
-    const list: IProduct[] = Array.isArray(raw) ? raw : [];
-    console.debug('Loaded products:', list.length, list[0]);
+    const list = Array.isArray(raw) ? raw : [];
+    console.debug('Loaded products (raw):', list.length, list[0]);
 
     products.setProducts(list);
     renderCatalog();
@@ -156,26 +156,54 @@ function openOrderStep1(): void {
     events
   );
 
-  // Дефолтная оплата и первичная валидация внутри формы
-  order.setPayment('card');        // модель знает про оплату
-  formCmp.setInitialPayment('card'); // форма знает про оплату и сама провалидируется
+  // Рендерим из текущего состояния модели (ничего не меняем внутри View)
+  const renderFromModel = () => {
+    const addressOk = (order.address ?? '').trim().length > 3;
+    const paymentOk = !!order.payment;
+    formCmp.render({
+      payment: order.payment ?? null,
+      address: order.address ?? '',
+      valid: addressOk && paymentOk,
+      errors: addressOk ? '' : 'Необходимо указать адрес',
+    });
+  };
 
-  // Слушаем единое событие для синхронизации модели (кнопку форма включает сама)
+  // Слушаем изменения от формы: презентер обновляет МОДЕЛЬ → ререндер из модели
   events.on(
     AppEvents.ORDER_ADDRESS_CHANGED,
-    (payload: { payment: 'card' | 'cash' | null; address: string }) => {
-      if (payload.payment) order.setPayment(payload.payment);
-      order.setAddress(payload.address ?? '');
+    ({ payment, address }: { payment: 'card' | 'cash' | null; address: string }) => {
+      if (payment) order.setPayment(payment);
+      if (typeof address === 'string') order.setAddress(address);
+      renderFromModel();
     }
   );
 
   // Сабмит шага 1
   events.on(AppEvents.ORDER_SUBMITTED, () => {
-    // На этом этапе форма уже включила кнопку, просто открываем шаг 2
+    const addressOk = (order.address ?? '').trim().length > 3;
+    const paymentOk = !!order.payment;
+    const valid = addressOk && paymentOk;
+
+    if (!valid) {
+      formCmp.render({
+        payment: order.payment ?? null,
+        address: order.address ?? '',
+        valid,
+        errors: addressOk ? '' : 'Необходимо указать адрес',
+      });
+      return;
+    }
+
     openOrderStep2();
   });
 
-  const formEl = formCmp.render({ valid: false, errors: '' });
+  // Стартовый рендер из модели
+  const formEl = formCmp.render({
+    payment: order.payment ?? null,
+    address: order.address ?? '',
+    valid: false,
+    errors: '',
+  });
   modal.render({ content: formEl });
 }
 
@@ -192,9 +220,7 @@ function openOrderStep2(): void {
     events
   );
 
-  events.on('contacts.name:change', (p: { field: 'name'; value: string }) => {
-    order.setName(p.value);
-  });
+  // Имя удалено из модели — подписку на contacts.name:change не делаем
   events.on('contacts.email:change', (p: { field: 'email'; value: string }) => {
     order.setEmail(p.value);
   });
@@ -212,7 +238,7 @@ function openOrderStep2(): void {
     const payload: OrderPayload = {
       payment: order.payment!,
       address: order.address,
-      name: order.name,
+      // name — удалён из модели и из payload
       email: order.email,
       phone: order.phone,
       items: cart.items.map((i) => i.id),
@@ -232,7 +258,7 @@ function openOrderStep2(): void {
     }
   });
 
-  const formEl = formCmp.render({ valid: true, errors: '' });
+  const formEl = formCmp.render({ valid: false, errors: '' });
   modal.render({ content: formEl });
 }
 

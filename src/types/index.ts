@@ -66,7 +66,7 @@ export type EventPayloads = {
   [AppEvents.CONTACTS_EMAIL_CHANGED]: { field: 'email'; value: string };
   [AppEvents.CONTACTS_PHONE_CHANGED]: { field: 'phone'; value: string };
   [AppEvents.CONTACTS_SUBMIT]: undefined;
-  [AppEvents.ORDER_CONTACTS_CHANGED]: { name: string; email: string; phone: string };
+  [AppEvents.ORDER_CONTACTS_CHANGED]: { email: string; phone: string };
   [AppEvents.FORM_ERROR]: { message: string };
 };
 
@@ -90,23 +90,21 @@ export interface ICartModel {
 export interface IOrderModel {
   payment: PaymentMethod | null;
   address: string;
-  name: string;
   email: string;
   phone: string;
 
   setPayment(method: PaymentMethod): void;
   setAddress(address: string): void;
-  setName(name: string): void;
   setEmail(email: string): void;
   setPhone(phone: string): void;
   validate(): boolean;
 }
 
+
 /* ========== API ========== */
 export type OrderPayload = {
   payment: PaymentMethod;
   address: string;
-  name: string;
   email: string;
   phone: string;
   items: string[];
