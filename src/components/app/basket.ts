@@ -1,7 +1,6 @@
-// src/components/common/basket.ts
-import { Component } from '../base/component';
+import { Component } from '../common/base/component';
 import { createElement, ensureElement, formatNumber } from '../../utils/utils';
-import { EventEmitter } from '../base/events';
+import { EventEmitter } from '../common/base/events';
 
 interface IBasketView {
   items: HTMLElement[];
@@ -25,12 +24,10 @@ export class Basket extends Component<IBasketView> {
       this.container.querySelector('.basket__button') ||
       this.container.querySelector('.basket__action');
 
-    // Открыть оформление заказа
     this._button?.addEventListener('click', () => {
       this.events.emit('order:open');
     });
 
-    // Стартовое состояние
     this.items = [];
   }
 
@@ -57,8 +54,6 @@ export class Basket extends Component<IBasketView> {
   }
 
   render(view: IBasketView): HTMLElement {
-    // Родительский render ничего не делает с нашими полями — вызываем без данных,
-    // чтобы не дублировать «чужую» работу и не вводить в заблуждение ревьюера.
     super.render();
 
     const { items, total, selected } = view;

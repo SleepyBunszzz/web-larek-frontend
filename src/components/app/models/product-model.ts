@@ -1,20 +1,19 @@
-// src/components/common/models/product-model.ts
-import { BaseModel } from '../../base/model';
+import { BaseModel } from '../../common/base/model';
 import { AppEvents, IProduct } from '../../../types';
 import { CDN_URL } from '../../../utils/constants';
 
-/** Безопасная склейка с CDN: не трогаем абсолютные и data-URL; без CDN — возвращаем как есть */
+
 function toCdn(path?: string): string {
   if (!path) return '';
   const s = String(path);
-  if (/^(https?:)?\/\//i.test(s)) return s;      // http://, https://, //cdn
-  if (/^data:/i.test(s)) return s;               // data:image/png;base64,...
+  if (/^(https?:)?\/\//i.test(s)) return s;     
+  if (/^data:/i.test(s)) return s;               
   const cdn = (CDN_URL ?? '').trim();
-  if (!cdn) return s;                            // нет CDN — оставляем относительный путь
+  if (!cdn) return s;                            
   return `${cdn.replace(/\/+$/, '')}/${s.replace(/^\/+/, '')}`;
 }
 
-/** Маппер «сырого» товара сервера к IProduct. */
+
 function mapToProduct(raw: any): IProduct {
   return {
     id: String(raw?.id ?? ''),
@@ -30,7 +29,6 @@ export class ProductModel extends BaseModel {
   private _products: IProduct[] = [];
   private _preview: IProduct | null = null;
 
-  /** Принимаем «сырые» товары и приводим к IProduct */
   setProducts(productsRaw: unknown[]) {
     const normalized = (productsRaw ?? []).map((it) => mapToProduct(it));
     this._products = normalized;

@@ -1,6 +1,6 @@
 // src/components/common/page.ts
-import { Component } from '../base/component';
-import { IEvents } from '../base/events';
+import { Component } from './base/component';
+import { IEvents } from './base/events';
 import { ensureElement } from '../../utils/utils';
 
 interface IPageState {
@@ -19,7 +19,6 @@ export class Page extends Component<IPageState> {
     super(container);
 
     this._counter = ensureElement<HTMLElement>('.header__basket-counter', container);
-    // в твоём pages/index.html каталог — это <main class="gallery">
     this._catalog = ensureElement<HTMLElement>('.gallery', container);
     this._wrapper = ensureElement<HTMLElement>('.page__wrapper', document.body);
     this._basket = ensureElement<HTMLElement>('.header__basket', container);
@@ -42,7 +41,6 @@ export class Page extends Component<IPageState> {
   }
 
   render(view: IPageState): HTMLElement {
-    // базовый render ничего не делает с нашими полями — вызываем без аргумента
     super.render();
 
     const { counter, catalog, locked } = view;

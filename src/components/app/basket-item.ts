@@ -1,4 +1,3 @@
-// src/components/common/basket-item.ts
 import type { IProduct } from '../../types';
 import { BaseProductCard } from './product-card';
 import { ensureElement, formatNumber, cloneTemplate } from '../../utils/utils';
@@ -8,7 +7,6 @@ type BasketItemProps = {
   onDelete: (id: string) => void;
 };
 
-/** Строка корзины как класс, общий родитель — BaseProductCard */
 export class BasketItemView extends BaseProductCard<IProduct> {
   private indexEl: HTMLElement;
   private deleteBtn: HTMLButtonElement | null;
@@ -28,7 +26,6 @@ export class BasketItemView extends BaseProductCard<IProduct> {
     super.render(data);
     this.applyBase(data);
 
-    // В корзине хотим строго число с форматированием
     this.setText(this.price, formatNumber(data.cost));
     this.indexEl.textContent = String(this.props.index);
 
@@ -36,10 +33,6 @@ export class BasketItemView extends BaseProductCard<IProduct> {
   }
 }
 
-/**
- * Совместимость со старым кодом: обёртка-функция.
- * Можно удалить и заменить вызовы на прямое создание BasketItemView.
- */
 export function buildBasketItem(
   product: IProduct,
   index: number,

@@ -1,4 +1,3 @@
-// src/components/common/product-card-preview.ts
 import type { IProduct } from '../../types';
 import { BaseProductCard } from './product-card';
 import { formatNumber } from '../../utils/utils';
@@ -6,7 +5,6 @@ import { formatNumber } from '../../utils/utils';
 type PreviewData = IProduct & { inCart?: boolean };
 type PreviewProps = { onToggleCart: (id: string) => void };
 
-/** Карточка предпросмотра товара */
 export class ProductCardPreview extends BaseProductCard<PreviewData> {
   private text?: HTMLElement;
   private btn?: HTMLButtonElement;
@@ -25,17 +23,13 @@ export class ProductCardPreview extends BaseProductCard<PreviewData> {
   render(data: PreviewData): HTMLElement {
     super.render(data);
 
-    // Базовые поля (название/категория/картинка/цена)
     this.applyBase(data);
 
-    // Текст описания
     if (this.text) this.setText(this.text, data.desc || '');
 
-    // Цена: «Бесценно» при 0 (перезаписываем, так как база поставила число)
     const priceText = data.cost > 0 ? formatNumber(data.cost) : 'Бесценно';
     this.setText(this.price, priceText);
 
-    // Кнопка: «Недоступно» при 0, иначе «Купить»/«Убрать из корзины»
     if (this.btn) {
       if (data.cost <= 0) {
         this.btn.textContent = 'Недоступно';

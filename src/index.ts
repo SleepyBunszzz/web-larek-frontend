@@ -1,24 +1,24 @@
 // src/index.ts
 import './scss/styles.scss';
 
-import { EventEmitter } from './components/base/events';
-import { CommerceAPI } from './components/common/api/commerce-api';
+import { EventEmitter } from './components/common/base/events';
+import { CommerceAPI } from './components/app/api/commerce-api';
 
 import { Page } from './components/common/page';
 import { Modal } from './components/common/modal';
-import { Basket } from './components/common/basket';
-import { ProductCard } from './components/common/product-card';
-import { ProductCardPreview } from './components/common/product-card-preview';
+import { Basket } from './components/app/basket';
+import { ProductCard } from './components/app/product-card';
+import { ProductCardPreview } from './components/app/product-card-preview';
 
-import { OrderForm } from './components/common/forms/order-form';
-import { ContactsForm } from './components/common/forms/contacts-form';
-import { SuccessView } from './components/common/forms/success';
+import { OrderForm } from './components/app/forms/order-form';
+import { ContactsForm } from './components/app/forms/contacts-form';
+import { SuccessView } from './components/app/forms/success';
 
-import { ProductModel } from './components/common/models/product-model';
-import { CartModel } from './components/common/models/cart-model';
-import { OrderModel } from './components/common/models/order-model';
+import { ProductModel } from './components/app/models/product-model';
+import { CartModel } from './components/app/models/cart-model';
+import { OrderModel } from './components/app/models/order-model';
 
-import { buildBasketItem } from './components/common/basket-item';
+import { buildBasketItem } from './components/app/basket-item';
 import { cloneTemplate, ensureElement } from './utils/utils';
 import { API_URL } from './utils/constants';
 

@@ -1,5 +1,4 @@
-// src/components/common/forms/order-form.ts
-import { EventEmitter } from '../../base/events';
+import { EventEmitter } from '../../common/base/events';
 import { AppEvents, PaymentMethod } from '../../../types';
 
 type OrderFormState = {
@@ -29,16 +28,15 @@ export class OrderForm {
     this.submitBtn = this.el.querySelector('.order__button')!;
     this.errorsEl = this.el.querySelector('.form__errors');
 
-    // Ввод адреса — только уведомляем презентер (без локальной валидации/состояния)
     this.inputAddress.addEventListener('input', () => {
       const address = this.inputAddress.value ?? '';
       this.events.emit(AppEvents.ORDER_ADDRESS_CHANGED, {
-        payment: null,         // представление не знает/не хранит выбор оплаты
+        payment: null,         
         address,
       } as any);
     });
 
-    // Выбор способа оплаты — только уведомляем презентер
+
     this.btnCard.addEventListener('click', (e) => {
       e.preventDefault();
       this.events.emit(AppEvents.ORDER_ADDRESS_CHANGED, {
@@ -55,38 +53,31 @@ export class OrderForm {
       } as any);
     });
 
-    // Сабмит шага 1 — презентер проверит модель и решит, можно ли дальше
+
     this.el.addEventListener('submit', (e) => {
       e.preventDefault();
       this.events.emit(AppEvents.ORDER_SUBMITTED);
     });
   }
 
-  /** Управление disabled «Далее» приходит снаружи */
+
   set valid(v: boolean) {
     this.submitBtn.toggleAttribute('disabled', !v);
   }
 
-  /** Текст ошибки приходит снаружи */
   set errors(msg: string) {
     if (this.errorsEl) this.errorsEl.textContent = msg ?? '';
   }
 
-  /**
-   * Полный контроль отображения — ТОЛЬКО из состояния (модель/презентер).
-   * Здесь нет побочных эффектов и нет изменений данных.
-   */
+ 
   render(state: OrderFormState) {
-    // адрес
     if (this.inputAddress.value !== (state.address ?? '')) {
       this.inputAddress.value = state.address ?? '';
     }
 
-    // подсветка выбранной оплаты
     this.btnCard.classList.toggle('button_alt-active', state.payment === 'card');
     this.btnCash.classList.toggle('button_alt-active', state.payment === 'cash');
 
-    // ошибки и доступность кнопки
     this.errors = state.errors ?? '';
     this.valid = Boolean(state.valid);
 

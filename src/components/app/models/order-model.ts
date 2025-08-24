@@ -1,5 +1,4 @@
-// src/components/common/models/order-model.ts
-import { BaseModel } from '../../base/model';
+import { BaseModel } from '../../common/base/model';
 import type { PaymentMethod } from '../../../types';
 
 export class OrderModel extends BaseModel {

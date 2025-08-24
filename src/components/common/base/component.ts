@@ -5,7 +5,6 @@ export abstract class Component<TData = unknown> {
     this.container = container;
   }
 
-  // Базовый render, можно вызывать super.render(data) в наследниках
   render(_data?: TData): HTMLElement {
     return this.container;
   }

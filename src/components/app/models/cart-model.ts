@@ -1,4 +1,4 @@
-import { BaseModel } from '../../base/model';
+import { BaseModel } from '../../common/base/model';
 import { AppEvents, IProduct } from '../../../types';
 
 export class CartModel extends BaseModel {

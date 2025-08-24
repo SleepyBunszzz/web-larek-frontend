@@ -4,30 +4,49 @@ export interface IApiClient {
   post<T>(endpoint: string, data: unknown, method?: string): Promise<T>;
 }
 
+export interface IEventEmitter {
+  on<T extends keyof EventPayloads>(event: T, callback: (payload: EventPayloads[T]) => void): void;
+  emit<T extends keyof EventPayloads>(event: T, payload: EventPayloads[T]): void;
+  off<T extends keyof EventPayloads>(event: T, callback: (payload: EventPayloads[T]) => void): void;
+  trigger<T extends keyof EventPayloads>(event: T, payload?: EventPayloads[T]): () => void;
+}
+
+/* ========== Платёж ========== */
 export type PaymentMethod = 'card' | 'cash';
 
-/* ========== Данные ========== */
+/* ========== Данные API ========== */
+export type ApiProduct = {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  image: string;
+  category: string;
+};
+
+/* ========== Нормализованные данные приложения ========== */
 export interface IProduct {
   id: string;
   name: string;
-  cost: number;
-  desc?: string;
-  img_url: string;
-  category: string;
+  cost: number;     // from ApiProduct.price
+  desc: string;     // from ApiProduct.description
+  img_url: string;  // from ApiProduct.image
+  category: string; // from ApiProduct.category
 }
 
-/* ========== Состояния ========== */
+/* ========== Состояния верхнего уровня (если используете) ========== */
 export interface IAppState {
   products: IProduct[];
   cart: IProduct[];
-  currentProduct: IProduct | null;
 }
 
-/* ========== События ========== */
+/* ========== События приложения ========== */
 export enum AppEvents {
   PRODUCTS_LOADED = 'products:loaded',
-  PRODUCT_PREVIEW = 'product:preview',
+  PRODUCT_PREVIEW = 'product:preview', 
+
   CART_UPDATED = 'cart:updated',
+
   BASKET_OPEN = 'basket:open',
   ORDER_OPEN = 'order:open',
   MODAL_OPEN = 'modal:open',
@@ -36,49 +55,41 @@ export enum AppEvents {
   // Оформление заказа (шаг 1)
   ORDER_ADDRESS_CHANGED = 'order.address:changed',
   ORDER_SUBMITTED = 'order:submitted',
-  ORDER_CHANGED = 'order:changed',
-
-  // Контакты (шаг 2)
-  CONTACTS_NAME_CHANGED = 'contacts.name:change',
-  CONTACTS_EMAIL_CHANGED = 'contacts.email:change',
-  CONTACTS_PHONE_CHANGED = 'contacts.phone:change',
-  CONTACTS_SUBMIT = 'contacts:submit',
-  ORDER_CONTACTS_CHANGED = 'order.contacts:changed',
-  FORM_ERROR = 'form:error',
 }
 
 export type EventPayloads = {
   [AppEvents.PRODUCTS_LOADED]: IProduct[];
   [AppEvents.PRODUCT_PREVIEW]: IProduct | null;
-  [AppEvents.CART_UPDATED]: IProduct[];
+
+  [AppEvents.CART_UPDATED]: {
+    items: string[];
+    total: number;
+    count: number;
+  };
+
   [AppEvents.BASKET_OPEN]: undefined;
   [AppEvents.ORDER_OPEN]: undefined;
   [AppEvents.MODAL_OPEN]: { content?: HTMLElement } | undefined;
   [AppEvents.MODAL_CLOSE]: undefined;
 
-  // Оформление заказа (шаг 1)
+  // Шаг 1: адрес и способ оплаты
   [AppEvents.ORDER_ADDRESS_CHANGED]: { payment: PaymentMethod | null; address: string };
   [AppEvents.ORDER_SUBMITTED]: undefined;
-  [AppEvents.ORDER_CHANGED]: undefined;
 
-  // Контакты (шаг 2)
-  [AppEvents.CONTACTS_NAME_CHANGED]: { field: 'name'; value: string };
-  [AppEvents.CONTACTS_EMAIL_CHANGED]: { field: 'email'; value: string };
-  [AppEvents.CONTACTS_PHONE_CHANGED]: { field: 'phone'; value: string };
-  [AppEvents.CONTACTS_SUBMIT]: undefined;
-  [AppEvents.ORDER_CONTACTS_CHANGED]: { email: string; phone: string };
-  [AppEvents.FORM_ERROR]: { message: string };
+  // Контакты (шаг 2) — строковые события
+  'contacts.email:change': { field: 'email'; value: string };
+  'contacts.phone:change': { field: 'phone'; value: string };
+  'contacts:submit': undefined;
 };
 
 /* ========== Модели ========== */
 export interface IProductModel {
   products: IProduct[];
-  preview: IProduct | null;
   setProducts(products: IProduct[]): void;
   getProduct(id: string): IProduct | undefined;
-  setPreview(product: IProduct | null): void;
 }
 
+// Корзина
 export interface ICartModel {
   items: IProduct[];
   addItem(product: IProduct): void;
@@ -87,6 +98,7 @@ export interface ICartModel {
   getTotal(): number;
 }
 
+// Заказ
 export interface IOrderModel {
   payment: PaymentMethod | null;
   address: string;
@@ -100,8 +112,7 @@ export interface IOrderModel {
   validate(): boolean;
 }
 
-
-/* ========== API ========== */
+/* ========== API-слой ========== */
 export type OrderPayload = {
   payment: PaymentMethod;
   address: string;
@@ -111,13 +122,14 @@ export type OrderPayload = {
   total: number;
 };
 
+
 export interface ICommerceAPI extends IApiClient {
-  getProducts(): Promise<IProduct[]>;
-  getProductById(id: string): Promise<IProduct>;
+  getProducts(): Promise<ApiProduct[]>; 
+  getProductById(id: string): Promise<ApiProduct>;
   createOrder(order: OrderPayload): Promise<void>;
 }
 
-/* ========== Компоненты ========== */
+/* ========== Пропсы ========== */
 export interface IProductListViewProps {
   products: IProduct[];
   onPreview: (productId: string) => void;
@@ -160,7 +172,7 @@ export interface IModalProps {
 export interface IPageProps {
   cartCount: number;
   onOpenCart: () => void;
-  productList: HTMLElement;
+  productList: HTMLElement[];
 }
 
 export interface IOrderAddressFormProps {
@@ -172,12 +184,9 @@ export interface IOrderAddressFormProps {
 }
 
 export interface IOrderContactsFormProps {
-  name?: string;
   email: string;
   phone: string;
-  onChange:
-    | ((data: { name: string; email: string; phone: string }) => void)
-    | ((data: { field: 'name' | 'email' | 'phone'; value: string }) => void);
+  onChange: (data: { field: 'email' | 'phone'; value: string }) => void;
   onSubmit: () => void;
   errors?: string;
 }

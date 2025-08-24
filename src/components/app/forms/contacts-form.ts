@@ -1,5 +1,4 @@
-// src/components/common/forms/contacts-form.ts
-import { EventEmitter } from '../../base/events';
+import { EventEmitter } from '../../common/base/events';
 import { ensureElement } from '../../../utils/utils';
 
 export class ContactsForm {
@@ -17,16 +16,13 @@ export class ContactsForm {
     this.el = container;
     this.events = events;
 
-    // обязательные элементы
     this.inputEmail = ensureElement<HTMLInputElement>('input[name="email"]', this.el);
     this.inputPhone = ensureElement<HTMLInputElement>('input[name="phone"]', this.el);
     this.submitBtn  = ensureElement<HTMLButtonElement>('button[type="submit"]', this.el);
 
-    // опциональные
     this.inputName  = this.el.querySelector<HTMLInputElement>('input[name="name"]');
     this.errorsEl   = this.el.querySelector<HTMLElement>('.form__errors');
 
-    // Слушатели ввода: эмитим наружу + локально включаем/выключаем кнопку по простому правилу
     this.inputEmail.addEventListener('input', () => {
       this.events.emit('contacts.email:change', { field: 'email', value: this.inputEmail.value });
       this.errors = '';
@@ -41,13 +37,11 @@ export class ContactsForm {
 
     this.inputName?.addEventListener('input', () => {
       this.events.emit('contacts.name:change', { field: 'name', value: this.inputName!.value });
-      // имя опционально — на валидность не влияет
     });
 
-    // Сабмит: финальную проверку делает OrderModel.validate() в презентере
     this.el.addEventListener('submit', (e) => {
       e.preventDefault();
-      this.validateAndToggle(); // на всякий случай пересчёт
+      this.validateAndToggle();
       this.events.emit('contacts:submit');
     });
   }
@@ -66,10 +60,6 @@ export class ContactsForm {
     return this.el;
   }
 
-  /**
-   * Локальная UX-проверка: активируем «Оплатить», если валиден e-mail ИЛИ телефон.
-   * Финальная бизнес-валидация — в OrderModel.validate() (не меняем существующий функционал).
-   */
   private validateAndToggle() {
     const email = (this.inputEmail.value ?? '').trim();
     const phone = (this.inputPhone.value ?? '').trim();

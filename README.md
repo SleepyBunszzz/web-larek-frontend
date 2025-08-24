@@ -52,46 +52,73 @@ yarn build
 
 ## Данные и типы данных
 
-IProduct — товар каталога
+Базовые типы 
+ 
+``` 
+export interface IApiClient { 
+  get<T>(endpoint: string): Promise<T>; 
+  post<T>( 
+    endpoint: string, 
+    data: unknown, 
+    method?: string 
+  ): Promise<T>;
+} 
+ 
+export interface IEventEmitter { 
+  on<T extends keyof EventPayloads>( 
+    event: T, 
+    callback: (payload: EventPayloads[T]) => void 
+  ): void; 
+  emit<T extends keyof EventPayloads>(event: T, payload: EventPayloads[T]): void; 
+  off<T extends keyof EventPayloads>( 
+    event: T, 
+    callback: (payload: EventPayloads[T]) => void 
+  ): void; 
+  trigger<T extends keyof EventPayloads>( 
+    event: T, 
+    payload?: EventPayloads[T] 
+  ): () => void; 
+} 
+``` 
+ Данные API
+
+ ``` 
+  type ApiProduct = {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  image: string;
+  category: string;
+}
+```
+
+Нормализованные данные приложения
 
 ```
-id: string — идентификатор;
-name: string — название;
-cost: number — цена;
-desc?: string — описание;
-img_url: string — ссылка на изображение;
-category: string — категория.
+interface IProduct {
+  id: string;
+  name: string;
+  cost: number;     // ← ApiProduct.price
+  desc: string;     // ← ApiProduct.description
+  img_url: string;  // ← ApiProduct.image (при необходимости через CDN)
+  category: string; // ← ApiProduct.category
+}
 ```
-
-IOrderModel — состояние заказа
-
-```
-payment: 'card' | 'cash' | null  // способ оплаты (может быть null до выбора)
-address: string — адрес доставки;
-name: string — имя покупателя;
-email: string — e-mail;
-phone: string — телефон.
-```
-
-Методы:
-- setPayment(method) — выбрать способ оплаты
-- setAddress(value) — сохранить адрес
-- setName(value) — сохранить имя
-- setEmail(value) — сохранить email
-- setPhone(value) — сохранить телефон
-- validate() — проверяет, что заполнен адрес, выбран способ оплаты и указан либо корректный email, либо телефо
-
-OrderPayload — данные заказа для API:
+Payload заказа
 
 ```
-payment: 'card' | 'cash';
-address: string;
-name: string;
-email: string;
-phone: string;
-items: string[] — список ID товаров;
-total: number — сумма заказа.
+export type OrderPayload = {
+  payment: 'card' | 'cash';
+  address: string;
+  name: string;
+  email: string;
+  phone: string;
+  items: IProduct[];
+  total: number;
+}
 ```
+
 ## Архитектура приложения
 
 Код приложения разделен на слои согласно парадигме MVP:
@@ -120,15 +147,14 @@ total: number — сумма заказа.
 ### Модели данных
 
 #### Класс ProductModel
-Отвечает за хранение списка товаров и выбор товара для предпросмотра.
+Отвечает за хранение списка товаров и доступ к товару по идентификатору.
 Поля:
 - products: IProduct[] — массив загруженных товаров.
-- preview: IProduct | null — товар, выбранный для предпросмотра (хранит весь объект товара).\
   
 Методы:
 - setProducts(products: IProduct[]): void - сохраняет массив товаров (например, после загрузки из API)
 - getProduct(id: string): IProduct | undefined - возвращает товар по ID
-- setPreview(product: IProduct | null): void - устанавливает товар для предпросмотра
+- setPreview(product: IProduct | null): void — сохранить выбранный товар
   
 #### Класс CartModel
 Отвечает за управление состоянием корзины, расчет итоговой суммы.
@@ -146,18 +172,18 @@ total: number — сумма заказа.
 Поля:
 - payment: 'card' | 'cash' | null — способ оплаты
 - address: string - адрес доставки
-- name: string - имя покупателя (отображается в заказе)
+- name: string — имя покупателя (отображается в заказе)
 - email: string - электронная почта покупателя
 - phone: string - номер телефона для связи.
 
 
 Методы:
-- setPayment(method): void — сохранить выбранный способ оплаты
-- setAddress(value): void — сохранить адрес доставки
-- setName(value): void — сохранить имя покупателя
-- setEmail(value): void — сохранить электронную почту
-- setPhone(value): void — сохранить телефон
-- validate(): boolean — проверяет заполненность и корректность всех полей (адрес, имя, email, телефон, метод оплаты).
+- setPayment(method: 'card' | 'cash'): void— сохранить выбранный способ оплаты
+- setAddress(value: string): void — сохранить адрес доставки
+- setEmail(value: string): void — сохранить электронную почту
+- setName(value: string): void - 
+- setPhone(value: string): void — сохранить телефон
+- validate(): boolean — проверяет, что выбран способ оплаты, адрес не короче 4 символов и корректны контакты (e-mail/телефон).
 
 ### API слой
 
@@ -280,24 +306,6 @@ OrderPayload включает:
 - set catalog(items: HTMLElement[]) - Перерисовывает каталог (replaceChildren).
 - set locked(value: boolean) - Тогглит класс .page__wrapper_locked.
 - render(data: { counter: number; catalog: HTMLElement[]; locked: boolean }): HTMLElement - Вызывает сеттеры и возвращает контейнер.
-
-#### Form<TFields>
-Абстрактная обвязка для форм: общая логика ввода/сабмита, кнопка submit, вывод ошибок.
-
-Поля
-- _submit: HTMLButtonElement — button[type=submit]
-- _errors: HTMLElement — .form__errors
-- events: IEvents
-- container: HTMLFormElement
-
-Методы
-- constructor(container: HTMLFormElement, events: IEvents)- Подписка на: input → эмитит ${form.name}.${field}:change с { field, value } и submit → эмитит ${form.name}:submit
-- protected onInputChange(field: keyof TFields, value: string) - Вынесенный эмит изменения поля.
-- set valid(value: boolean) - Включает/выключает кнопку сабмита.
-- set errors(value: string) - Выводит текст ошибки.
-- render(state: Partial<TFields> & { valid: boolean; errors: string }): HTMLElement - Проставляет валидность/ошибки, мержит прочие поля в инстанс, возвращает контейнер.
-
-В проекте конкретные формы (OrderForm, ContactsForm) реализованы как отдельные классы, а не наследники Form<T>, но поведение схожее.
 
 #### Класс OrderForm
 Форма первого шага: способ оплаты + адрес. Сама включает/выключает кнопку «Далее» при валидных данных.
