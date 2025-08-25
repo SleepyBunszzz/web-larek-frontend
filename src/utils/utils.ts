@@ -150,4 +150,15 @@ export function categoryClass(category: string): string {
   return '';
 }
 
+// === ЕМЕЙЛ/ТЕЛЕФОН: единые валидаторы ===
+export function isValidEmail(email?: string): boolean {
+  const v = String(email ?? '').trim();
+  return !!v && /\S+@\S+\.\S+/.test(v);
+}
+
+export function isValidPhone(phone?: string, minDigits = 6): boolean {
+  const digits = String(phone ?? '').replace(/\D+/g, ''); // оставляем только цифры
+  return digits.length >= minDigits;
+}
+
 

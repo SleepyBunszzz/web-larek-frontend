@@ -20,8 +20,8 @@ export class ContactsForm {
     this.inputPhone = ensureElement<HTMLInputElement>('input[name="phone"]', this.el);
     this.submitBtn  = ensureElement<HTMLButtonElement>('button[type="submit"]', this.el);
 
-    this.inputName  = this.el.querySelector<HTMLInputElement>('input[name="name"]');
-    this.errorsEl   = this.el.querySelector<HTMLElement>('.form__errors');
+    this.inputName = this.el.querySelector<HTMLInputElement>('input[name="name"]');
+    this.errorsEl  = this.el.querySelector<HTMLElement>('.form__errors');
 
     this.inputEmail.addEventListener('input', () => {
       this.events.emit('contacts.email:change', { field: 'email', value: this.inputEmail.value });
@@ -55,18 +55,14 @@ export class ContactsForm {
   }
 
   render(opts: { valid: boolean; errors: string }) {
-    this.valid = opts.valid;
+    this.valid  = opts.valid;
     this.errors = opts.errors;
     return this.el;
   }
 
   private validateAndToggle() {
-    const email = (this.inputEmail.value ?? '').trim();
-    const phone = (this.inputPhone.value ?? '').trim();
-
-    const emailOk = /\S+@\S+\.\S+/.test(email);
-    const phoneOk = /^\+?\d[\d\s()-]{5,}$/.test(phone);
-
-    this.valid = emailOk || phoneOk;
+    const emailNotEmpty = (this.inputEmail.value ?? '').trim().length > 0;
+    const phoneNotEmpty = (this.inputPhone.value ?? '').trim().length > 0;
+    this.valid = emailNotEmpty && phoneNotEmpty;
   }
 }

@@ -55,34 +55,23 @@ yarn build
 Базовые типы 
  
 ``` 
-export interface IApiClient { 
-  get<T>(endpoint: string): Promise<T>; 
-  post<T>( 
-    endpoint: string, 
-    data: unknown, 
-    method?: string 
-  ): Promise<T>;
-} 
- 
-export interface IEventEmitter { 
-  on<T extends keyof EventPayloads>( 
-    event: T, 
-    callback: (payload: EventPayloads[T]) => void 
-  ): void; 
-  emit<T extends keyof EventPayloads>(event: T, payload: EventPayloads[T]): void; 
-  off<T extends keyof EventPayloads>( 
-    event: T, 
-    callback: (payload: EventPayloads[T]) => void 
-  ): void; 
-  trigger<T extends keyof EventPayloads>( 
-    event: T, 
-    payload?: EventPayloads[T] 
-  ): () => void; 
-} 
+export interface IApiClient {
+  get<T>(endpoint: string): Promise<T>;
+  post<T>(endpoint: string, data: unknown, method?: string): Promise<T>;
+}
+
+export interface IEventEmitter {
+  on<T extends keyof EventPayloads>(event: T, callback: (payload: EventPayloads[T]) => void): void;
+  emit<T extends keyof EventPayloads>(event: T, payload: EventPayloads[T]): void;
+  off<T extends keyof EventPayloads>(event: T, callback: (payload: EventPayloads[T]) => void): void;
+  trigger<T extends keyof EventPayloads>(event: T, payload?: EventPayloads[T]): () => void;
+}
+
 ``` 
  Данные API
-
- ``` 
+ 
+ ```
+ Сервер возвращает объекты следующей структуры: 
   type ApiProduct = {
   id: string;
   name: string;
@@ -96,13 +85,14 @@ export interface IEventEmitter {
 Нормализованные данные приложения
 
 ```
+В приложении данные приводятся к виду:
 interface IProduct {
   id: string;
   name: string;
-  cost: number;     // ← ApiProduct.price
-  desc: string;     // ← ApiProduct.description
-  img_url: string;  // ← ApiProduct.image (при необходимости через CDN)
-  category: string; // ← ApiProduct.category
+  cost: number;     // из ApiProduct.price
+  desc: string;     // из ApiProduct.description
+  img_url: string;  // из ApiProduct.image (через CDN при необходимости)
+  category: string; // из ApiProduct.category
 }
 ```
 Payload заказа
@@ -111,10 +101,9 @@ Payload заказа
 export type OrderPayload = {
   payment: 'card' | 'cash';
   address: string;
-  name: string;
   email: string;
   phone: string;
-  items: IProduct[];
+  items: string[]; // массив id товаров
   total: number;
 }
 ```
@@ -150,6 +139,7 @@ export type OrderPayload = {
 Отвечает за хранение списка товаров и доступ к товару по идентификатору.
 Поля:
 - products: IProduct[] — массив загруженных товаров.
+- preview: IProduct | null — выбранный для предпросмотра товар.
   
 Методы:
 - setProducts(products: IProduct[]): void - сохраняет массив товаров (например, после загрузки из API)
@@ -172,7 +162,6 @@ export type OrderPayload = {
 Поля:
 - payment: 'card' | 'cash' | null — способ оплаты
 - address: string - адрес доставки
-- name: string — имя покупателя (отображается в заказе)
 - email: string - электронная почта покупателя
 - phone: string - номер телефона для связи.
 
@@ -181,7 +170,6 @@ export type OrderPayload = {
 - setPayment(method: 'card' | 'cash'): void— сохранить выбранный способ оплаты
 - setAddress(value: string): void — сохранить адрес доставки
 - setEmail(value: string): void — сохранить электронную почту
-- setName(value: string): void - 
 - setPhone(value: string): void — сохранить телефон
 - validate(): boolean — проверяет, что выбран способ оплаты, адрес не короче 4 символов и корректны контакты (e-mail/телефон).
 
@@ -194,14 +182,6 @@ export type OrderPayload = {
 - getProducts() — получает список всех товаров
 - getProductById(id) — получает один товар по ID
 - createOrder(order) — оформить заказ.
-
-OrderPayload включает:
-- payment: 'card' | 'cash'
-- address: string
-- email: string
-- phone: string
-- items: string[] — ID товаров
-- total: number — сумма заказа
 
 ### Представления (Views)
 Классы отображают данные внутри переданных контейнеров. Все они наследуются от Component или специализированных базовых классов.
@@ -318,8 +298,7 @@ OrderPayload включает:
 - btnCash: HTMLButtonElement — button[name="cash"]
 - submitBtn: HTMLButtonElement — .order__button
 - errorsEl: HTMLElement | null — .form__errors
-- currentPayment: PaymentMethod | null — выбранный способ оплаты
-
+  
 Методы
 - constructor(container: HTMLFormElement, events: EventEmitter) - Слушает:
 ввод адреса → emitAddressChanged() + validateAndToggle()

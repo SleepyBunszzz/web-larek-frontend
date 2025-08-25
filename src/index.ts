@@ -1,4 +1,3 @@
-// src/index.ts
 import './scss/styles.scss';
 
 import { EventEmitter } from './components/common/base/events';
@@ -25,25 +24,25 @@ import { API_URL } from './utils/constants';
 import type { IProduct, OrderPayload } from './types';
 import { AppEvents } from './types';
 
-// ----- инфраструктура
+
 const events = new EventEmitter();
 const api = new CommerceAPI(API_URL, {});
 const page = new Page(document.body, events);
 const modal = new Modal(ensureElement('#modal-container'), events);
 
 const products = new ProductModel();
-const cart = new CartModel(); // CartModel не трогаем
+const cart = new CartModel();
 const order = new OrderModel();
 
-// статичный View корзины (создаём один раз)
+
 let basketView: Basket;
 let basketEl: HTMLElement;
 
-// === ДЕКОРАТОР КОРЗИНЫ (без изменения CartModel) ===
+
 function decorateCartWithEvents(c: CartModel): void {
-  const addItemOrig: (prod: IProduct) => void = c.addItem.bind(c);
-  const removeItemOrig: (id: string) => void = c.removeItem.bind(c);
-  const clearCartOrig: () => void = c.clearCart.bind(c);
+  const addItemOrig = c.addItem.bind(c);
+  const removeItemOrig = c.removeItem.bind(c);
+  const clearCartOrig = c.clearCart.bind(c);
 
   const notify = (): void => {
     events.emit(AppEvents.CART_UPDATED, {
@@ -53,14 +52,14 @@ function decorateCartWithEvents(c: CartModel): void {
     });
   };
 
-  (c as unknown as { addItem: (prod: IProduct) => void }).addItem = (prod: IProduct): void => {
-    const before: number = c.items.length;
-    addItemOrig(prod);
+  (c as unknown as { addItem: (p: IProduct) => void }).addItem = (p: IProduct): void => {
+    const before = c.items.length;
+    addItemOrig(p);
     if (c.items.length !== before) notify();
   };
 
   (c as unknown as { removeItem: (id: string) => void }).removeItem = (id: string): void => {
-    const before: number = c.items.length;
+    const before = c.items.length;
     removeItemOrig(id);
     if (c.items.length !== before) notify();
   };
@@ -72,7 +71,7 @@ function decorateCartWithEvents(c: CartModel): void {
   };
 }
 
-// ----- bootstrap
+
 window.addEventListener('DOMContentLoaded', () => {
   void init();
 });
@@ -80,38 +79,30 @@ window.addEventListener('DOMContentLoaded', () => {
 async function init(): Promise<void> {
   console.debug('API_URL =', API_URL);
 
-  // включаем декоратор для текущей корзины
   decorateCartWithEvents(cart);
 
-  // статичный компонент корзины
   basketView = new Basket(cloneTemplate<HTMLDivElement>('#basket'), events);
 
-  // подписки UI
   events.on('basket:open', () => openBasket());
   events.on('order:open', () => openOrderStep1());
   events.on('modal:open', () => (page.locked = true));
   events.on('modal:close', () => (page.locked = false));
 
-  // корзина перерисовывается только по событию
   events.on(AppEvents.CART_UPDATED, () => {
     renderBasketFromModel();
     updateHeader();
   });
 
-  // загрузка каталога
-  const raw: unknown = await api.getProducts();
-  const list: IProduct[] = Array.isArray(raw) ? (raw as IProduct[]) : [];
-  products.setProducts(list);
+  const raw = await api.getProducts();
+  const rawList: unknown[] = Array.isArray(raw) ? raw : [];
+  products.setProducts(rawList);
 
-  // первичный рендер
   renderCatalog();
   renderBasketFromModel();
   updateHeader();
 }
 
-// ----- каталог
 function renderCatalog(): void {
-  // если каталог пуст — View сам покажет пустое состояние
   if (!products.products.length) {
     page.render({ counter: cart.items.length, catalog: [], locked: false });
     return;
@@ -127,37 +118,34 @@ function renderCatalog(): void {
 }
 
 function openPreview(productId: string): void {
-  const p: IProduct | undefined = products.getProduct(productId);
+  const p = products.getProduct(productId);
   if (!p) return;
 
-  const inCart: boolean = cart.items.some((i: IProduct) => i.id === p.id);
+  const inCart = cart.items.some((i) => i.id === p.id);
 
   const previewCmp = new ProductCardPreview(
     cloneTemplate<HTMLDivElement>('#card-preview'),
     {
       onToggleCart: (id: string): void => {
-        const prod: IProduct | undefined = products.getProduct(id);
+        const prod = products.getProduct(id);
         if (!prod) return;
-        const already: boolean = cart.items.some((i: IProduct) => i.id === id);
+
+        const already = cart.items.some((i) => i.id === id);
         if (already) cart.removeItem(id);
         else cart.addItem(prod);
 
-        // локально обновляем только превью для мгновенного фидбека
         previewCmp.render({ ...prod, inCart: !already });
-        // остальной UI обновится по AppEvents.CART_UPDATED из декоратора
       },
     }
   );
 
-  const previewEl: HTMLElement = previewCmp.render({ ...p, inCart });
+  const previewEl = previewCmp.render({ ...p, inCart });
   modal.render({ content: previewEl });
 }
 
-// ----- корзина
 function renderBasketFromModel(): void {
-  const itemsEls: HTMLElement[] = cart.items.map((p: IProduct, idx: number) =>
+  const itemsEls: HTMLElement[] = cart.items.map((p, idx) =>
     buildBasketItem(p, idx + 1, (id: string): void => {
-      // меняем только модель — событие перерисует корзину/хедер
       cart.removeItem(id);
     })
   );
@@ -165,30 +153,34 @@ function renderBasketFromModel(): void {
   basketEl = basketView.render({
     items: itemsEls,
     total: cart.getTotal(),
-    selected: cart.items.map((i: IProduct) => i.id),
+    selected: cart.items.map((i) => i.id),
   });
 }
 
-// Открыть корзину — просто показать уже отрисованный компонент
 function openBasket(): void {
   modal.render({ content: basketEl });
 }
 
-// ----- оформление заказа (2 шага)
 function openOrderStep1(): void {
   const formCmp = new OrderForm(
     cloneTemplate<HTMLFormElement>('#order'),
     events
   );
 
+  if (!order.payment) {
+    order.setPayment('card');
+    formCmp.setInitialPayment?.('card');
+  }
+
   const renderFromModel = (): void => {
-    const addressOk: boolean = (order.address ?? '').trim().length > 3;
-    const paymentOk: boolean = !!order.payment;
+    const hasAddress = (order.address ?? '').trim().length > 0;
+    const hasPayment = !!order.payment;
+
     formCmp.render({
       payment: order.payment ?? null,
       address: order.address ?? '',
-      valid: addressOk && paymentOk,
-      errors: addressOk ? '' : 'Необходимо указать адрес',
+      valid: hasAddress && hasPayment,
+      errors: hasAddress ? '' : 'Необходимо указать адрес',
     });
   };
 
@@ -202,36 +194,30 @@ function openOrderStep1(): void {
   );
 
   events.on(AppEvents.ORDER_SUBMITTED, () => {
-    const addressOk: boolean = (order.address ?? '').trim().length > 3;
-    const paymentOk: boolean = !!order.payment;
-    const valid: boolean = addressOk && paymentOk;
+    const hasAddress = (order.address ?? '').trim().length > 0;
+    const hasPayment = !!order.payment;
 
-    if (!valid) {
-      formCmp.render({
-        payment: order.payment ?? null,
-        address: order.address ?? '',
-        valid,
-        errors: addressOk ? '' : 'Необходимо указать адрес',
-      });
+    if (!hasAddress || !hasPayment) {
+      renderFromModel();
       return;
     }
     openOrderStep2();
   });
 
+  renderFromModel();
+
   const formEl: HTMLElement = formCmp.render({
     payment: order.payment ?? null,
     address: order.address ?? '',
-    valid: false,
+    valid: (order.address ?? '').trim().length > 0 && !!order.payment,
     errors: '',
   });
+
   modal.render({ content: formEl });
 }
 
 function openOrderStep2(): void {
-  const formCmp = new ContactsForm(
-    cloneTemplate<HTMLFormElement>('#contacts'),
-    events
-  );
+  const formCmp = new ContactsForm(cloneTemplate<HTMLFormElement>('#contacts'), events);
 
   events.on('contacts.email:change', (p: { field: 'email'; value: string }) => {
     order.setEmail(p.value);
@@ -242,7 +228,7 @@ function openOrderStep2(): void {
 
   events.on('contacts:submit', async () => {
     if (!order.validate()) {
-      formCmp.errors = 'Проверьте адрес, способ оплаты, email/телефон';
+      formCmp.errors = 'Заполните все поля формы';
       formCmp.render({ valid: false, errors: formCmp.errors });
       return;
     }
@@ -250,24 +236,20 @@ function openOrderStep2(): void {
     const payload: OrderPayload = {
       payment: order.payment!,
       address: order.address,
-      email: order.email,
-      phone: order.phone,
-      items: cart.items.map((i: IProduct) => i.id),
-      total: cart.getTotal(), // сервер приоритетен и может пересчитать
+      email:   order.email,
+      phone:   order.phone,
+      items:   cart.items.map((i: IProduct) => i.id),
+      total:   cart.getTotal(),
     };
 
     try {
-      // возможен ответ с total (если API это поддерживает)
-      // @ts-ignore — совместимость, если метод типизирован как Promise<void>
+      // @ts-ignore — метод может вернуть void
       const res = await api.createOrder(payload);
-      // @ts-ignore
+      // @ts-ignore — если сервер вернёт total
       const totalFromServer: number | undefined = res?.total;
+      const total = typeof totalFromServer === 'number' ? totalFromServer : cart.getTotal();
 
-      const total: number = typeof totalFromServer === 'number'
-        ? totalFromServer
-        : cart.getTotal();
-
-      cart.clearCart(); // вызовет CART_UPDATED из декоратора
+      cart.clearCart();
       openSuccess(total);
     } catch (e) {
       console.error('Order failed', e);
@@ -276,20 +258,19 @@ function openOrderStep2(): void {
     }
   });
 
-  const formEl: HTMLElement = formCmp.render({ valid: false, errors: '' });
+  const formEl = formCmp.render({ valid: false, errors: '' });
   modal.render({ content: formEl });
 }
 
 function openSuccess(total: number): void {
   const successCmp = new SuccessView(cloneTemplate<HTMLDivElement>('#success'));
-  const successEl: HTMLElement = successCmp.render({
+  const successEl = successCmp.render({
     total,
     onClose: () => modal.close(),
   });
   modal.render({ content: successEl });
 }
 
-// ----- header
 function updateHeader(): void {
   page.counter = cart.items.length;
 }
