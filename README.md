@@ -165,13 +165,12 @@ export type OrderPayload = {
 - email: string - электронная почта покупателя
 - phone: string - номер телефона для связи.
 
-
 Методы:
 - setPayment(method: 'card' | 'cash'): void— сохранить выбранный способ оплаты
 - setAddress(value: string): void — сохранить адрес доставки
 - setEmail(value: string): void — сохранить электронную почту
 - setPhone(value: string): void — сохранить телефон
-- validate(): boolean — проверяет, что выбран способ оплаты, адрес не короче 4 символов и корректны контакты (e-mail/телефон).
+- validate(): boolean — проверяет, что выбран способ оплаты, адрес и контакты (e-mail/телефон).
 
 ### API слой
 
@@ -187,13 +186,15 @@ export type OrderPayload = {
 Классы отображают данные внутри переданных контейнеров. Все они наследуются от Component или специализированных базовых классов.
 
 #### Класс Component
-Базовый абстрактный класс для всех View.
+Базовый класс Component предоставляет единый цикл рендера:
 
-Методы:
-- setText(el, text) — текст в элемент
-- setImage(img, src, alt?) — картинка
+- render(data?: unknown): HTMLElement — вызывается презентером, сохраняет данные и вызывает update(data), после чего возвращает корневой элемент компонента.
+- protected update(data?: unknown): void — абстрактный метод, который реализуют потомки.
+
+Вспомогательные методы:
+- setText(node, text) — текст в элементe
+- setImage(node, src, alt?) — картинка (src, alt) у <img>
 - setDisabled(el, state) — включить/выключить кнопку
-- render(data) — отрисовка
 
 #### Класс Modal
 Реализует модальное окно. Управляет открытием/закрытием, устанавливает слушатели на клик по фону и кнопке-крестику.
@@ -259,17 +260,20 @@ export type OrderPayload = {
 - set total(total: number) - Выводит сумму в _total (через formatNumber).
 - render(data: { items: HTMLElement[]; total: number; selected: string[] }): HTMLElemen - Вызывает перечисленные сеттеры и возвращает контейнер.
 
-#### Класс» BasketItem
-Функциональный конструктор элемента списка корзины из шаблона #card-basket.
-Клонирует <template id="card-basket">.
+#### Класс» BasketItemView
+Компонент отображает один товар в списке корзины. Наследуется от базового Component и содержит только логику, общую для всех представлений (установка текста, отключение элементов и т. п.).
 
 Заполняет:
 - .basket__item-index — порядковый номер
 - .card__title — название
 - .card__price — цена (formatNumber)
-- Вешает обработчик на кнопку удаления: селектор .basket__item-delete, .card__button → onDelete(product.id).
-- Возвращает готовый <li>.
+- .basket__item-delete, .card__button - кнопка удаления
 
+Методы:
+- constructor(container: HTMLElement, props: BasketItemProps) — сохраняет ссылки на элементы и вешает обработчик удаления. Идентификатор товара берётся из data-id корневого узла.
+-  render(product: IProduct): HTMLElement — вызывает super.render(product) и возвращает корневой элемент
+-  protected update(data?: unknown): void — применяет данные к DOM
+-  
 #### Класс Page
 Контейнер главной страницы: каталог, кнопка корзины, счётчик, блокировка скролла при открытии модалки.
 
@@ -288,7 +292,7 @@ export type OrderPayload = {
 - render(data: { counter: number; catalog: HTMLElement[]; locked: boolean }): HTMLElement - Вызывает сеттеры и возвращает контейнер.
 
 #### Класс OrderForm
-Форма первого шага: способ оплаты + адрес. Сама включает/выключает кнопку «Далее» при валидных данных.
+Компонент не хранит данных и не валидирует их. В обработчиках событий только эмитит ORDER_ADDRESS_CHANGED и ORDER_SUBMITTED. Переключение способа оплаты, ошибки и доступность кнопки управляются исключительно через render(state), где state формируется моделью и передаётся презентером
 
 Поля
 - el: HTMLFormElement
@@ -311,7 +315,7 @@ submit → validateAndToggle() → events.emit(AppEvents.ORDER_SUBMITTED)
 - render(opts: { valid: boolean; errors: string }): HTMLElement - Применяет состояние и возвращает форму.
 
 #### Класс ContactsForm
-Форма второго шага: контакты. Поддерживает опциональное поле name (может отсутствовать в шаблоне). Кнопка «Оплатить» активируется, когда валиден email или телефон.
+Форма второго шага: контакты. Поддерживает опциональное поле name (может отсутствовать в шаблоне). Не содержит валидации. Эмитит изменения полей и submit. Кнопку “Оплатить” активирует по valid, ошибки берёт из errors, переданных презентером.
 
 Поля
 - el: HTMLFormElement
@@ -323,15 +327,10 @@ submit → validateAndToggle() → events.emit(AppEvents.ORDER_SUBMITTED)
 - errorsEl: HTMLElement | null — .form__errors
 
 Методы
-- constructor(container: HTMLFormElement, events: EventEmitter) - Слушает:
-ввод email → events.emit('contacts.email:change', { field:'email', value }) + validateAndToggle()
-ввод phone → events.emit('contacts.phone:change', { field:'phone', value }) + validateAndToggle()
-ввод name (если поле есть) → events.emit('contacts.name:change', { field:'name', value }) + validateAndToggle()
-submit → validateAndToggle() → events.emit('contacts:submit')
-
-- set valid(v: boolean) - Активирует/деактивирует «Оплатить».
-- set errors(msg: string) - Пишет текст ошибки.
-- render(opts: { valid: boolean; errors: string }): HTMLElement - Применяет состояние и возвращает форму.
+- constructor(container: HTMLFormElement, events: EventEmitter) - слушает изменения полей и отправку формы
+- set valid(v: boolean) - активирует/деактивирует «Оплатить».
+- set errors(msg: string) - отображает ошибки валидации.
+- render(opts: { valid: boolean; errors: string }): HTMLElement - применяет состояние.
 
 
 #### Класс SuccessView

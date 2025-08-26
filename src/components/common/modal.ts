@@ -4,6 +4,7 @@ import { IEvents } from './base/events';
 
 interface IModalData {
   content: HTMLElement | null;
+  bind?: (container: HTMLElement) => void | (() => void);
 }
 
 export class Modal extends Component<IModalData> {

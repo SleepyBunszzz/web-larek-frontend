@@ -1,32 +1,40 @@
+// src/components/common/forms/success-view.ts
 import { Component } from '../../common/base/component';
-import { ensureElement, formatNumber } from '../../../utils/utils';
+import { formatNumber } from '../../../utils/utils';
 
 type SuccessData = { total: number; onClose: () => void };
 
-export class SuccessView extends Component<SuccessData> {
+export class SuccessView extends Component {
   private totalEl: HTMLElement;
   private closeBtn: HTMLButtonElement;
 
-  private onCloseCallback: (() => void) | null = null;
-
   constructor(container: HTMLElement) {
     super(container);
-    this.totalEl = ensureElement<HTMLElement>('.order-success__description', container);
-    this.closeBtn = ensureElement<HTMLButtonElement>('.order-success__close', container);
 
-    this.closeBtn.addEventListener('click', () => {
-      this.onCloseCallback?.();
-    });
+    const total = container.querySelector('.order-success__description') as HTMLElement | null;
+    const close = container.querySelector('.order-success__close') as HTMLButtonElement | null;
+
+    if (!total) throw new Error('SuccessView: .order-success__description not found');
+    if (!close) throw new Error('SuccessView: .order-success__close not found');
+
+    this.totalEl = total;
+    this.closeBtn = close;
   }
 
+  // Используем функционал родителя: super.render(data) вызывает update(data)
   render(data: SuccessData): HTMLElement {
-    super.render(data);
+    return super.render(data);
+  }
 
-    this.totalEl.textContent = `Списано ${formatNumber(data.total)}`;
+  // Единственное место, где мы изменяем DOM на основе данных
+  protected update(data?: unknown): void {
+    const { total, onClose } = (data ?? {}) as SuccessData;
 
-    this.onCloseCallback = data.onClose;
+    // "Списано N синапсов"
+    this.totalEl.textContent = `Списано ${formatNumber(total)} синапсов`;
 
-    return this.el;
+    // Актуализируем обработчик закрытия
+    // (переназначаем onClick на каждый рендер, без утечек и дублей)
+    this.closeBtn.onclick = () => onClose?.();
   }
 }
- 

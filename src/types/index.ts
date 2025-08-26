@@ -5,10 +5,19 @@ export interface IApiClient {
 }
 
 export interface IEventEmitter {
-  on<T extends keyof EventPayloads>(event: T, callback: (payload: EventPayloads[T]) => void): void;
+  on<T extends keyof EventPayloads>(
+    event: T,
+    callback: (payload: EventPayloads[T]) => void
+  ): void;
   emit<T extends keyof EventPayloads>(event: T, payload: EventPayloads[T]): void;
-  off<T extends keyof EventPayloads>(event: T, callback: (payload: EventPayloads[T]) => void): void;
-  trigger<T extends keyof EventPayloads>(event: T, payload?: EventPayloads[T]): () => void;
+  off<T extends keyof EventPayloads>(
+    event: T,
+    callback: (payload: EventPayloads[T]) => void
+  ): void;
+  trigger<T extends keyof EventPayloads>(
+    event: T,
+    payload?: EventPayloads[T]
+  ): () => void;
 }
 
 /* ========== Платёж ========== */
@@ -58,25 +67,45 @@ export enum AppEvents {
 }
 
 export type EventPayloads = {
+  /* ===== Каталог/превью ===== */
   [AppEvents.PRODUCTS_LOADED]: IProduct[];
   [AppEvents.PRODUCT_PREVIEW]: IProduct | null;
 
+  /* ===== Корзина/счетчики ===== */
   [AppEvents.CART_UPDATED]: { items: string[]; total: number; count: number };
 
+  /* ===== UI / модалки ===== */
   [AppEvents.BASKET_OPEN]: undefined;
   [AppEvents.ORDER_OPEN]: undefined;
   [AppEvents.MODAL_OPEN]: { content?: HTMLElement } | undefined;
   [AppEvents.MODAL_CLOSE]: undefined;
 
-  // Шаг 1: адрес и способ оплаты
-  [AppEvents.ORDER_ADDRESS_CHANGED]: { payment: PaymentMethod | null; address: string };
+  /* ===== Шаг 1: адрес и оплата (View -> Presenter/Model) ===== */
+  [AppEvents.ORDER_ADDRESS_CHANGED]: {
+    payment: PaymentMethod | null;
+    address: string;
+  };
   [AppEvents.ORDER_SUBMITTED]: undefined;
 
-  // Шаг 2: контакты (строковые имена событий используются в коде)
+  /* ===== Шаг 1: адрес и оплата (Model -> View) — добавлено ===== */
+  'order.step1:state': {
+    valid: boolean;
+    errors: string;
+    value: { payment: PaymentMethod | null; address: string };
+  };
+
+  /* ===== Шаг 2: контакты (View -> Presenter/Model) — как было ===== */
   'contacts.email:change': { field: 'email'; value: string };
   'contacts.phone:change': { field: 'phone'; value: string };
   'contacts.name:change': { field: 'name'; value: string }; // поле name опционально в шаблоне
   'contacts:submit': undefined;
+
+  /* ===== Шаг 2: контакты (Model -> View) — добавлено ===== */
+  'contacts:state': {
+    valid: boolean;
+    errors: string;
+    value: { email: string; phone: string; name?: string };
+  };
 };
 
 /* ========== Модели ========== */
@@ -106,11 +135,11 @@ export interface IOrderModel {
   email: string;
   phone: string;
 
-  setPayment(method: PaymentMethod): void;
+  setPayment(method: PaymentMethod | null): void;
   setAddress(address: string): void;
   setEmail(email: string): void;
   setPhone(phone: string): void;
-  validate(): boolean;
+  validate(): { valid: boolean; errors: string };
 }
 
 /* ========== API-слой ========== */

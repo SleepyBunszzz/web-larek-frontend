@@ -23,25 +23,20 @@ export class ContactsForm {
     this.inputName = this.el.querySelector<HTMLInputElement>('input[name="name"]');
     this.errorsEl  = this.el.querySelector<HTMLElement>('.form__errors');
 
-    this.inputEmail.addEventListener('input', () => {
-      this.events.emit('contacts.email:change', { field: 'email', value: this.inputEmail.value });
-      this.errors = '';
-      this.validateAndToggle();
+        this.inputEmail.addEventListener('input', () => {
+      this.events.emit('contacts.field:change', { field: 'email', value: this.inputEmail.value });
     });
 
     this.inputPhone.addEventListener('input', () => {
-      this.events.emit('contacts.phone:change', { field: 'phone', value: this.inputPhone.value });
-      this.errors = '';
-      this.validateAndToggle();
+      this.events.emit('contacts.field:change', { field: 'phone', value: this.inputPhone.value });
     });
 
     this.inputName?.addEventListener('input', () => {
-      this.events.emit('contacts.name:change', { field: 'name', value: this.inputName!.value });
+      this.events.emit('contacts.field:change', { field: 'name', value: this.inputName!.value });
     });
 
     this.el.addEventListener('submit', (e) => {
       e.preventDefault();
-      this.validateAndToggle();
       this.events.emit('contacts:submit');
     });
   }
@@ -60,9 +55,9 @@ export class ContactsForm {
     return this.el;
   }
 
-  private validateAndToggle() {
-    const emailNotEmpty = (this.inputEmail.value ?? '').trim().length > 0;
-    const phoneNotEmpty = (this.inputPhone.value ?? '').trim().length > 0;
-    this.valid = emailNotEmpty && phoneNotEmpty;
-  }
+  // private validateAndToggle() {
+  //   const emailNotEmpty = (this.inputEmail.value ?? '').trim().length > 0;
+  //   const phoneNotEmpty = (this.inputPhone.value ?? '').trim().length > 0;
+  //   this.valid = emailNotEmpty && phoneNotEmpty;
+  // }
 }
