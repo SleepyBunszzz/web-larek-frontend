@@ -1,121 +1,114 @@
-// src/components/common/forms/order-form.ts
-import { EventEmitter } from '../../common/base/events';
-import { AppEvents, PaymentMethod } from '../../../types';
-
-type OrderFormState = {
-  payment: PaymentMethod | null;
-  address: string;
-  valid: boolean;
-  errors: string;
-};
-
-export class OrderForm {
-  private el: HTMLFormElement;
-  private events: EventEmitter;
-
-  private inputAddress: HTMLInputElement;
-  private btnCard: HTMLButtonElement;
-  private btnCash: HTMLButtonElement;
-  private submitBtn: HTMLButtonElement;
-  private errorsEl: HTMLElement | null;
-
-  constructor(container: HTMLFormElement, events: EventEmitter) {
-    this.el = container;
-    this.events = events;
-
-    // ищем элементы без сторонних утилит
-    const address = this.el.querySelector('input[name="address"]') as HTMLInputElement | null;
-    const btnCard = this.el.querySelector('button[name="card"]') as HTMLButtonElement | null;
-    const btnCash = this.el.querySelector('button[name="cash"]') as HTMLButtonElement | null;
-    const submit =
-      (this.el.querySelector('button[type="submit"]') as HTMLButtonElement | null) ??
-      (this.el.querySelector('.order__button') as HTMLButtonElement | null);
-
-    if (!address) throw new Error('OrderForm: input[name="address"] not found');
-    if (!btnCard) throw new Error('OrderForm: button[name="card"] not found');
-    if (!btnCash) throw new Error('OrderForm: button[name="cash"] not found');
-    if (!submit)  throw new Error('OrderForm: submit button not found');
-
-    this.inputAddress = address;
-    this.btnCard = btnCard;
-    this.btnCash = btnCash;
-    this.submitBtn = submit;
-    this.errorsEl = this.el.querySelector('.form__errors');
-
-    // View -> Presenter/Model: только уведомляем об изменениях,
-    // НИКАКОЙ локальной валидации/перерисовки.
-    this.inputAddress.addEventListener('input', () => {
-      this.events.emit(AppEvents.ORDER_ADDRESS_CHANGED, {
-        payment: null, // «не менять способ оплаты»
-        address: this.inputAddress.value ?? '',
-      } as any);
-    });
-
-    this.btnCard.addEventListener('click', (e) => {
-      e.preventDefault();
-      this.events.emit(AppEvents.ORDER_ADDRESS_CHANGED, {
-        payment: 'card',
-        address: this.inputAddress.value ?? '',
-      } as any);
-    });
-
-    this.btnCash.addEventListener('click', (e) => {
-      e.preventDefault();
-      this.events.emit(AppEvents.ORDER_ADDRESS_CHANGED, {
-        payment: 'cash',
-        address: this.inputAddress.value ?? '',
-      } as any);
-    });
-
-    this.el.addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.events.emit(AppEvents.ORDER_SUBMITTED);
-    });
-  }
-
-  // Доступность сабмита управляется только внешним состоянием
-  set valid(v: boolean) {
-    this.submitBtn.toggleAttribute('disabled', !v);
-  }
-
-  // Ошибки приходят только извне
-  set errors(msg: string) {
-    if (this.errorsEl) this.errorsEl.textContent = msg ?? '';
-  }
-
-  /**
-   * Метод оставлен для совместимости.
-   * Не «перекрашивает» локально — лишь сообщает презентеру,
-   * чтобы тот обновил модель и затем передал новое состояние в render().
-   */
-  setInitialPayment(method: PaymentMethod) {
-    this.events.emit(AppEvents.ORDER_ADDRESS_CHANGED, {
-      payment: method,
-      address: this.inputAddress?.value ?? '',
-    } as any);
-  }
-
-  /**
-   * Единственное место, где меняется UI — применяем внешнее состояние.
-   */
-  render(state: OrderFormState) {
-    // адрес
-    const address = state.address ?? '';
-    if (this.inputAddress.value !== address) {
-      this.inputAddress.value = address;
-    }
-
-    // визуализация выбранного способа оплаты — строго из state
-    const method = state.payment; // null | 'card' | 'cash'
-    this.btnCard.classList.toggle('button_alt-active', method === 'card');
-    this.btnCash.classList.toggle('button_alt-active', method === 'cash');
-    this.btnCard.setAttribute('aria-pressed', String(method === 'card'));
-    this.btnCash.setAttribute('aria-pressed', String(method === 'cash'));
-
-    // ошибки и доступность сабмита — только извне
-    this.errors = state.errors ?? '';
-    this.valid = Boolean(state.valid);
-
-    return this.el;
-  }
-}
+import { EventEmitter } from '../../common/base/events'; 
+import { AppEvents, PaymentMethod } from '../../../types'; 
+ 
+type OrderFormState = { 
+  payment: PaymentMethod | null; 
+  address: string; 
+  valid: boolean; 
+  errors: string; 
+}; 
+ 
+export class OrderForm { 
+  private el: HTMLFormElement; 
+  private events: EventEmitter; 
+ 
+  private inputAddress: HTMLInputElement; 
+  private btnCard: HTMLButtonElement; 
+  private btnCash: HTMLButtonElement; 
+  private submitBtn: HTMLButtonElement; 
+  private errorsEl: HTMLElement | null; 
+ 
+ 
+  private currentPayment: PaymentMethod | null = null;
+  constructor(container: HTMLFormElement, events: EventEmitter) { 
+    this.el = container; 
+    this.events = events; 
+ 
+    this.inputAddress = this.el.querySelector('input[name="address"]')!; 
+    this.btnCard = this.el.querySelector('button[name="card"]')!; 
+    this.btnCash = this.el.querySelector('button[name="cash"]')!; 
+    this.submitBtn = this.el.querySelector('.order__button')!; 
+    this.errorsEl = this.el.querySelector('.form__errors'); 
+ 
+    this.inputAddress.addEventListener('input', () => { 
+      const address = this.inputAddress.value ?? ''; 
+      this.events.emit(AppEvents.ORDER_ADDRESS_CHANGED, { 
+        payment: null, 
+        address, 
+      } as any); 
+      this.recalcAndToggle(); 
+    }); 
+ 
+    this.btnCard.addEventListener('click', (e) => { 
+      e.preventDefault(); 
+      this.setPaymentLocal('card');
+      this.events.emit(AppEvents.ORDER_ADDRESS_CHANGED, { 
+        payment: 'card', 
+        address: this.inputAddress.value ?? '', 
+      } as any); 
+      this.recalcAndToggle(); 
+    }); 
+ 
+    this.btnCash.addEventListener('click', (e) => { 
+      e.preventDefault(); 
+      this.setPaymentLocal('cash'); 
+      this.events.emit(AppEvents.ORDER_ADDRESS_CHANGED, { 
+        payment: 'cash', 
+        address: this.inputAddress.value ?? '', 
+      } as any); 
+      this.recalcAndToggle(); 
+    }); 
+ 
+    this.el.addEventListener('submit', (e) => { 
+      e.preventDefault(); 
+      this.events.emit(AppEvents.ORDER_SUBMITTED); 
+    }); 
+  } 
+ 
+  set valid(v: boolean) { 
+    this.submitBtn.toggleAttribute('disabled', !v); 
+  } 
+ 
+  set errors(msg: string) { 
+    if (this.errorsEl) this.errorsEl.textContent = msg ?? ''; 
+  } 
+ 
+  setInitialPayment(method: PaymentMethod) { 
+    this.setPaymentLocal(method); 
+  } 
+ 
+  render(state: OrderFormState) { 
+    const address = state.address ?? ''; 
+    if (this.inputAddress.value !== address) { 
+      this.inputAddress.value = address; 
+    } 
+ 
+     
+    if (state.payment !== this.currentPayment) { 
+      if (state.payment) this.setPaymentLocal(state.payment); 
+      else this.setPaymentLocal(null); 
+    } 
+ 
+    this.errors = state.errors ?? ''; 
+    this.valid = Boolean(state.valid); 
+ 
+    return this.el; 
+  } 
+ 
+   
+  private setPaymentLocal(method: PaymentMethod | null) { 
+    this.currentPayment = method; 
+    this.btnCard.classList.toggle('button_alt-active', method === 'card'); 
+    this.btnCash.classList.toggle('button_alt-active', method === 'cash'); 
+    
+    this.btnCard.setAttribute('aria-pressed', String(method === 'card')); 
+    this.btnCash.setAttribute('aria-pressed', String(method === 'cash')); 
+  } 
+ 
+ 
+ private recalcAndToggle() {
+      const hasAddress = (this.inputAddress.value ?? '').trim().length > 0; 
+    const hasPayment = this.currentPayment !== null; 
+    this.valid = hasAddress && hasPayment; 
+  } 
+} 
