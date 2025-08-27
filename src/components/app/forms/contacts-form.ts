@@ -54,11 +54,22 @@ export class ContactsForm {
     if (this.errorsEl) this.errorsEl.textContent = msg ?? ''; 
   } 
  
-  render(opts: { valid: boolean; errors: string }) { 
-    this.valid  = opts.valid; 
-    this.errors = opts.errors; 
-    return this.el; 
-  } 
+render(opts: { valid: boolean; errors: string; name?: string; email?: string; phone?: string }) {
+  this.valid  = opts.valid;
+  this.errors = opts.errors;
+
+  if (this.inputName && typeof opts.name === 'string') {
+    this.inputName.value = opts.name;
+  }
+  if (typeof opts.email === 'string') {
+    this.inputEmail.value = opts.email;
+  }
+  if (typeof opts.phone === 'string') {
+    this.inputPhone.value = opts.phone;
+  }
+
+  return this.el;
+}
  
   private validateAndToggle() {    
     const emailNotEmpty = (this.inputEmail.value ?? '').trim().length > 0; 

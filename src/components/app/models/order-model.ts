@@ -3,11 +3,14 @@ import type { PaymentMethod } from '../../../types';
 
 export class OrderModel extends BaseModel {
   payment: PaymentMethod | null = null;
+  name = '';
   address = '';
   email   = '';
   phone   = '';
 
-  setPayment(method: PaymentMethod) { this.payment = method; this.emit('order:changed'); }
+
+  setPayment(method: PaymentMethod) { this.payment = method;  this.emit('order:changed'); }
+  setName(name: string)             { this.name = name;       this.emit('order:changed'); }
   setAddress(address: string)       { this.address = address; this.emit('order:changed'); }
   setEmail(email: string)           { this.email = email;     this.emit('order:changed'); }
   setPhone(phone: string)           { this.phone = phone;     this.emit('order:changed'); }

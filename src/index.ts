@@ -27,6 +27,8 @@ import { AppEvents } from './types';
 
 const events = new EventEmitter();
 const api = new CommerceAPI(API_URL, {});
+const orderForm    = new OrderForm(cloneTemplate<HTMLFormElement>('#order'), events);
+const contactsForm = new ContactsForm(cloneTemplate<HTMLFormElement>('#contacts'), events);
 const page = new Page(document.body, events);
 const modal = new Modal(ensureElement('#modal-container'), events);
 
@@ -71,12 +73,126 @@ function decorateCartWithEvents(c: CartModel): void {
   };
 }
 
+function bindGlobalHandlersOnce(): void {
+  // ===== UI =====
+  events.on('basket:open', () => openBasket());
+  events.on('order:open', () => openOrderStep1());
+  events.on('modal:open', () => (page.locked = true));
+  events.on('modal:close', () => (page.locked = false));
+
+  // ===== Корзина (если CartModel эмитит событие обновления) =====
+  // Если у тебя есть AppEvents.CART_UPDATED — используем его; иначе можно оставить строку 'cart:updated'
+  events.on(AppEvents.CART_UPDATED ?? ('cart:updated' as any), () => {
+    renderBasketFromModel();
+    updateHeader();
+  });
+
+  // ===== Шаг 1: адрес + способ оплаты (подписки один раз) =====
+  events.on(AppEvents.ORDER_ADDRESS_CHANGED ?? ('order:address:changed' as any),
+    ({ payment, address }: { payment: 'card' | 'cash' | null; address: string }) => {
+      if (payment) order.setPayment(payment);
+      if (typeof address === 'string') order.setAddress(address);
+
+      // Перерисовать форму (если модель не эмитит ORDER_CHANGED)
+      orderForm.render({
+        payment: order.payment ?? null,
+        address: order.address ?? '',
+        valid: Boolean(order.payment) && Boolean((order.address ?? '').trim()),
+        errors: (order.address ?? '').trim() ? '' : 'Необходимо указать адрес',
+      });
+    }
+  );
+
+  events.on(AppEvents.ORDER_SUBMITTED ?? ('order:submitted' as any), () => {
+    const hasAddress = (order.address ?? '').trim().length > 0;
+    const hasPayment = !!order.payment;
+
+    if (!hasAddress || !hasPayment) {
+      orderForm.render({
+        payment: order.payment ?? null,
+        address: order.address ?? '',
+        valid: hasAddress && hasPayment,
+        errors: hasAddress ? '' : 'Необходимо указать адрес',
+      });
+      return;
+    }
+    openOrderStep2();
+  });
+
+  // ===== Шаг 2: контакты (подписки один раз) =====
+  events.on('contacts.email:change', (p: { field: 'email'; value: string }) => {
+    order.setEmail(p.value);
+  });
+  events.on('contacts.phone:change', (p: { field: 'phone'; value: string }) => {
+    order.setPhone(p.value);
+  });
+  events.on('contacts.name:change', (p: { field: 'name'; value: string }) => {
+    (order as any).setName?.(p.value); // если в модели есть setName
+  });
+
+  events.on('contacts:submit', async () => {
+    // Если в модели есть полная валидация — используем её (иначе можно проверить поля вручную)
+    const validateAll = (order as any).validateAll ?? (order as any).validate;
+    if (typeof validateAll === 'function') {
+      const res = validateAll.call(order);
+      const valid = typeof res === 'boolean' ? res : res?.valid;
+      if (!valid) {
+        contactsForm.render({
+          name: order.name ?? '',
+          email: order.email ?? '',
+          phone: order.phone ?? '',
+          valid: false,
+          errors: 'Заполните все поля формы',
+        });
+        return;
+      }
+    }
+
+    const payload: OrderPayload = {
+      payment: order.payment!,                 // к этому моменту валидно
+      address: order.address,
+      email:   order.email,
+      phone:   order.phone,
+      items:   cart.items.map((i: IProduct) => i.id),
+      total:   cart.getTotal(),
+    };
+
+    try {
+      await api.createOrder(payload);
+      const total = cart.getTotal();
+
+      cart.clearCart();        // очистим корзину
+
+      order.setPayment(null as any);   // сброс способа оплаты
+      order.setAddress('');            // адрес
+      (order as any).setName?.('');    // имя (если есть в модели)
+      order.setEmail('');              // email
+      order.setPhone('');              // телефон
+
+      renderBasketFromModel();  // обновим вид корзины
+      updateHeader();          // обновим счётчик в шапке
+      openSuccess(total);      // покажем успех
+
+    } catch (e) {
+      console.error('Order failed', e);
+      contactsForm.render({
+        name: order.name ?? '',
+        email: order.email ?? '',
+        phone: order.phone ?? '',
+        valid: true,
+        errors: 'Не удалось оформить заказ. Попробуйте ещё раз.',
+      });
+    }
+  });
+}
 
 window.addEventListener('DOMContentLoaded', () => {
   void init();
 });
 
 async function init(): Promise<void> {
+  bindGlobalHandlersOnce();
+
   console.debug('API_URL =', API_URL);
 
   decorateCartWithEvents(cart);
@@ -161,105 +277,28 @@ function openBasket(): void {
   modal.render({ content: basketEl });
 }
 
-function openOrderStep1(): void {
-  const formCmp = new OrderForm(
-    cloneTemplate<HTMLFormElement>('#order'),
-    events
-  );
-
-  if (!order.payment) {
-    order.setPayment('card');
-    formCmp.setInitialPayment?.('card');
-  }
-
-  const renderFromModel = (): void => {
-    const hasAddress = (order.address ?? '').trim().length > 0;
-    const hasPayment = !!order.payment;
-
-    formCmp.render({
-      payment: order.payment ?? null,
-      address: order.address ?? '',
-      valid: hasAddress && hasPayment,
-      errors: hasAddress ? '' : 'Необходимо указать адрес',
-    });
-  };
-
-  events.on(
-    AppEvents.ORDER_ADDRESS_CHANGED,
-    ({ payment, address }: { payment: 'card' | 'cash' | null; address: string }) => {
-      if (payment) order.setPayment(payment);
-      if (typeof address === 'string') order.setAddress(address);
-      renderFromModel();
-    }
-  );
-
-  events.on(AppEvents.ORDER_SUBMITTED, () => {
-    const hasAddress = (order.address ?? '').trim().length > 0;
-    const hasPayment = !!order.payment;
-
-    if (!hasAddress || !hasPayment) {
-      renderFromModel();
-      return;
-    }
-    openOrderStep2();
-  });
-
-  renderFromModel();
-
-  const formEl: HTMLElement = formCmp.render({
+function openOrderStep1() {
+  // без подписок!
+  const el = orderForm.render({
     payment: order.payment ?? null,
     address: order.address ?? '',
-    valid: (order.address ?? '').trim().length > 0 && !!order.payment,
-    errors: '',
+    valid: !!order.payment && (order.address ?? '').trim().length > 0,
+    errors: (order.address ?? '').trim() ? '' : 'Необходимо указать адрес',
   });
-
-  modal.render({ content: formEl });
+  modal.render({ content: el });
 }
 
-function openOrderStep2(): void {
-  const formCmp = new ContactsForm(cloneTemplate<HTMLFormElement>('#contacts'), events);
 
-  events.on('contacts.email:change', (p: { field: 'email'; value: string }) => {
-    order.setEmail(p.value);
+function openOrderStep2() {
+  // берём текущее состояние из order
+  const el = contactsForm.render({
+    name:  order.name ?? '',
+    email: order.email ?? '',
+    phone: order.phone ?? '',
+    valid: false,
+    errors: ''
   });
-  events.on('contacts.phone:change', (p: { field: 'phone'; value: string }) => {
-    order.setPhone(p.value);
-  });
-
-  events.on('contacts:submit', async () => {
-    if (!order.validate()) {
-      formCmp.errors = 'Заполните все поля формы';
-      formCmp.render({ valid: false, errors: formCmp.errors });
-      return;
-    }
-
-    const payload: OrderPayload = {
-      payment: order.payment!,
-      address: order.address,
-      email:   order.email,
-      phone:   order.phone,
-      items:   cart.items.map((i: IProduct) => i.id),
-      total:   cart.getTotal(),
-    };
-
-    try {
-      // @ts-ignore — метод может вернуть void
-      const res = await api.createOrder(payload);
-      // @ts-ignore — если сервер вернёт total
-      const totalFromServer: number | undefined = res?.total;
-      const total = typeof totalFromServer === 'number' ? totalFromServer : cart.getTotal();
-
-      cart.clearCart();
-      openSuccess(total);
-    } catch (e) {
-      console.error('Order failed', e);
-      formCmp.errors = 'Не удалось оформить заказ. Попробуйте ещё раз.';
-      formCmp.render({ valid: true, errors: formCmp.errors });
-    }
-  });
-
-  const formEl = formCmp.render({ valid: false, errors: '' });
-  modal.render({ content: formEl });
+  modal.render({ content: el });
 }
 
 function openSuccess(total: number): void {
