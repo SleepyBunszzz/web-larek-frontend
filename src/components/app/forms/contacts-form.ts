@@ -59,10 +59,10 @@ export class ContactsForm {
     this.errors = opts.errors; 
     return this.el; 
   } 
-  private validateAndToggle() { 
-     const emailNotEmpty = (this.inputEmail.value ?? '').trim().length > 0; 
+ 
+  private validateAndToggle() {    
+    const emailNotEmpty = (this.inputEmail.value ?? '').trim().length > 0; 
     const phoneNotEmpty = (this.inputPhone.value ?? '').trim().length > 0; 
     this.valid = emailNotEmpty && phoneNotEmpty; 
   } 
 } 
-

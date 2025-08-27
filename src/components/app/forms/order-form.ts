@@ -41,7 +41,7 @@ export class OrderForm {
  
     this.btnCard.addEventListener('click', (e) => { 
       e.preventDefault(); 
-      this.setPaymentLocal('card');
+      this.setPaymentLocal('card'); 
       this.events.emit(AppEvents.ORDER_ADDRESS_CHANGED, { 
         payment: 'card', 
         address: this.inputAddress.value ?? '', 
@@ -69,8 +69,7 @@ export class OrderForm {
     this.submitBtn.toggleAttribute('disabled', !v); 
   } 
  
-  set errors(msg: string) { 
-    if (this.errorsEl) this.errorsEl.textContent = msg ?? ''; 
+set errors(msg: string) {     if (this.errorsEl) this.errorsEl.textContent = msg ?? ''; 
   } 
  
   setInitialPayment(method: PaymentMethod) { 
@@ -106,9 +105,9 @@ export class OrderForm {
   } 
  
  
- private recalcAndToggle() {
-      const hasAddress = (this.inputAddress.value ?? '').trim().length > 0; 
+  private recalcAndToggle() {    const hasAddress = (this.inputAddress.value ?? '').trim().length > 0; 
     const hasPayment = this.currentPayment !== null; 
     this.valid = hasAddress && hasPayment; 
   } 
 } 
+
