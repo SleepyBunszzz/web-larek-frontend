@@ -1,37 +1,57 @@
-export abstract class Component<TData = unknown> {
-  protected readonly container: HTMLElement;
+export abstract class Component<TState = unknown> {
+  protected readonly el: HTMLElement;
+  protected state: Partial<TState> = {};
 
   constructor(container: HTMLElement) {
-    this.container = container;
+    this.el = container;
   }
 
-  render(_data?: TData): HTMLElement {
-    return this.container;
+  public get container(): HTMLElement {
+    return this.el;
   }
 
-  protected setText(el: Element | null | undefined, text?: string | number) {
-    if (el && typeof text !== 'undefined' && el instanceof HTMLElement) {
-      el.textContent = String(text);
+  protected setText(el: Element | null, value?: string | number) {
+    if (el) el.textContent = String(value ?? '');
+  }
+
+  protected setImage(img: HTMLImageElement | null, src?: string, alt?: string) {
+    if (img && src) {
+      img.src = src;
+      if (alt !== undefined) img.alt = alt;
     }
   }
 
-  protected setImage(el: Element | null | undefined, src?: string, alt?: string) {
-    if (el instanceof HTMLImageElement && src) {
-      el.src = src;
-      if (typeof alt !== 'undefined') el.alt = alt;
-    }
-  }
-
-  protected setDisabled(el: Element | null | undefined, disabled = true) {
-    if (!el) return;
-    const htmlEl = el as HTMLElement & { disabled?: boolean };
-    if ('disabled' in htmlEl) htmlEl.disabled = disabled;
-    htmlEl.classList.toggle('is-disabled', disabled);
-  }
-
-  get el(): HTMLElement {
-    return this.container;
+  protected setDisabled(el: Element | null, state: boolean) {
+if (!el) return;
+    if (el instanceof HTMLButtonElement) {
+      el.disabled = state;
+    } else {
+       el.toggleAttribute('disabled', state);
   }
 }
+
+  protected toggleClass(el: Element | null, className: string, force?: boolean) {
+    if (!el) return;
+    el.classList.toggle(className, force);
+  }
+
+  protected setHidden(el: Element | null) {
+    if (el) el.classList.add('hidden');
+  }
+
+  protected setVisible(el: Element | null) {
+    if (el) el.classList.remove('hidden');
+  }
+  render(next?: Partial<TState>): HTMLElement {
+    if (next) {
+      this.state = { ...this.state, ...next };
+    }
+    this.onRender();
+    return this.el;
+  }
+  protected onRender(): void {
+  }
+}
+
 
 

@@ -40,6 +40,8 @@ const basketView   = new Basket(cloneTemplate<HTMLDivElement>('#basket'), events
 const orderForm    = new OrderForm(cloneTemplate<HTMLFormElement>('#order'), events);
 const contactsForm = new ContactsForm(cloneTemplate<HTMLFormElement>('#contacts'), events);
 const successView  = new SuccessView(cloneTemplate<HTMLDivElement>('#success'));
+const successTemplate = document.querySelector<HTMLTemplateElement>('#success');  
+
 
 // ---------- helpers ----------
 function renderCatalog(): void {
