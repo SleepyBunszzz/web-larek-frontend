@@ -27,11 +27,8 @@ export class ContactsForm {
     this.inputEmail = ensureElement<HTMLInputElement>('input[name="email"]', this.el);
     this.inputPhone = ensureElement<HTMLInputElement>('input[name="phone"]', this.el);
     this.submitBtn  = ensureElement<HTMLButtonElement>('button[type="submit"]', this.el);
-
     this.inputName = this.el.querySelector<HTMLInputElement>('input[name="name"]');
     this.errorsEl  = this.el.querySelector<HTMLElement>('.form__errors');
-
-    // View ТОЛЬКО уведомляет о действиях пользователя — без валидации
     this.inputEmail.addEventListener('input', () => {
       this.events.emit('contacts.email:change', { field: 'email', value: this.inputEmail.value });
     });
@@ -50,17 +47,15 @@ export class ContactsForm {
     });
   }
 
-  // Управление доступностью кнопки сабмита — ТОЛЬКО через входящее состояние
+
   set valid(v: boolean) {
     this.submitBtn.toggleAttribute('disabled', !v);
   }
 
-  // Текст ошибок — тоже из входящего состояния
   set errors(msg: string) {
     if (this.errorsEl) this.errorsEl.textContent = msg ?? '';
   }
 
-  // Представление отражает состояние, пришедшее из презентера/модели
   render(state: ContactsFormState) {
     if (this.inputName && typeof state.name === 'string' && this.inputName.value !== state.name) {
       this.inputName.value = state.name;

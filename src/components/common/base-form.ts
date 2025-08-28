@@ -15,12 +15,10 @@ export abstract class BaseForm {
     this.errorsEl = this.el.querySelector('.form__errors');
   }
 
-  /** включаем/выключаем сабмит-кнопку — решение принимает модель/презентер, а не форма */
   set valid(v: boolean) {
     if (this.submitBtn) this.submitBtn.toggleAttribute('disabled', !v);
   }
 
-  /** выводим текст ошибок — строка готовая от модели/презентера */
   set errors(msg: string) {
     if (this.errorsEl) this.errorsEl.textContent = msg ?? '';
   }

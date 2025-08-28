@@ -36,7 +36,7 @@ export class Basket extends Component<IBasketView> {
     this._list.replaceChildren(...items);
   } else {
     const emptyEl = createElement<HTMLParagraphElement>('p');
-    this.setText(emptyEl, 'Корзина пуста');          // ← используем метод родителя
+    this.setText(emptyEl, 'Корзина пуста');
     this._list.replaceChildren(emptyEl);
   }
   }

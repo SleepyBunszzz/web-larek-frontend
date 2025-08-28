@@ -35,7 +35,6 @@ export class OrderModel extends BaseModel {
     this.emit('order:changed');
   }
 
-  // Шаг 1: адрес + способ оплаты
   validateStep1(): ValidationResult {
     const hasAddress = (this.address ?? '').trim().length > 0;
     if (!hasAddress) {
@@ -48,7 +47,6 @@ export class OrderModel extends BaseModel {
     return { valid: true, errors: '' };
   }
 
-  // Шаг 2: контакты — теперь проверяем только, что поля не пустые
   validateContacts(): ValidationResult {
     const emailNotEmpty = (this.email ?? '').trim().length > 0;
     const phoneNotEmpty = (this.phone ?? '').trim().length > 0;
@@ -63,7 +61,6 @@ export class OrderModel extends BaseModel {
     return { valid: true, errors: '' };
   }
 
-  // Полная валидация (оба шага)
   validateAll(): ValidationResult {
     const s1 = this.validateStep1();
     if (!s1.valid) return s1;
@@ -74,7 +71,6 @@ export class OrderModel extends BaseModel {
     return { valid: true, errors: '' };
   }
 
-  // Состояния для рендера форм
   toOrderFormState() {
     const { valid, errors } = this.validateStep1();
     return {
@@ -96,7 +92,6 @@ export class OrderModel extends BaseModel {
     };
   }
 
-  // Сброс после успешного заказа
   reset() {
     this.payment = null;
     this.name = '';
