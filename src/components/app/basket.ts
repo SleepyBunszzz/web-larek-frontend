@@ -32,15 +32,13 @@ export class Basket extends Component<IBasketView> {
   }
 
   set items(items: HTMLElement[]) {
-    if (items.length) {
-      this._list.replaceChildren(...items);
-    } else {
-      this._list.replaceChildren(
-        createElement<HTMLParagraphElement>('p', {
-          textContent: 'Корзина пуста',
-        })
-      );
-    }
+  if (items.length) {
+    this._list.replaceChildren(...items);
+  } else {
+    const emptyEl = createElement<HTMLParagraphElement>('p');
+    this.setText(emptyEl, 'Корзина пуста');          // ← используем метод родителя
+    this._list.replaceChildren(emptyEl);
+  }
   }
 
   set selected(items: string[]) {
