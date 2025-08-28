@@ -64,6 +64,7 @@ export enum AppEvents {
   // Оформление заказа (шаг 1)
   ORDER_ADDRESS_CHANGED = 'order.address:changed',
   ORDER_SUBMITTED = 'order:submitted',
+  ORDER_PAYMENT_SELECTED = 'order:payment-selected',
 }
 
 export type EventPayloads = {
@@ -81,11 +82,9 @@ export type EventPayloads = {
   [AppEvents.MODAL_CLOSE]: undefined;
 
   /* ===== Шаг 1: адрес и оплата (View -> Presenter/Model) ===== */
-  [AppEvents.ORDER_ADDRESS_CHANGED]: {
-    payment: PaymentMethod | null;
-    address: string;
-  };
-  [AppEvents.ORDER_SUBMITTED]: undefined;
+  [AppEvents.ORDER_ADDRESS_CHANGED]: { address: string };
+  [AppEvents.ORDER_PAYMENT_SELECTED]: { payment: PaymentMethod };
+  [AppEvents.ORDER_SUBMITTED]: void;
 
   /* ===== Шаг 1: адрес и оплата (Model -> View) — добавлено ===== */
   'order.step1:state': {
