@@ -53,14 +53,11 @@ export class OrderForm extends BaseForm {
       this.inputAddress.value = address;
     }
 
-    // подсветка выбранного способа оплаты
     this.setPaymentLocal(state.payment ?? null);
 
-    // показываем ошибки только по явному флагу (после сабмита)
     const shouldShowErrors = state.showErrors === true;
     this.errors = shouldShowErrors ? (state.errors ?? '') : '';
 
-    // валидность можем выставлять всегда (или оставить как есть)
     this.valid = Boolean(state.valid);
 
     return this.el;

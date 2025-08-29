@@ -41,15 +41,6 @@ export interface IProduct {
   category: string;
 }
 
-// export interface IProduct {
-//   id: string;
-//   title: string;
-//   description: string;
-//   image: string;
-//   category: string;
-//   price: number;
-// }
-
 export interface IAppState {
   products: IProduct[];
   cart: IProduct[];
@@ -155,8 +146,6 @@ export interface ICommerceAPI extends IApiClient {
   getProductById(id: string): Promise<IProduct>;
   createOrder(order: OrderPayload): Promise<void>;
 }
-
-/* ========== (Необязательные) пропсы для View ========== */
 
 export interface IModalProps {
   content: HTMLElement;

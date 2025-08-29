@@ -1,4 +1,3 @@
-// пример минимального базового API
 export interface ApiListResponse<T> {
   items: T[];
 }
@@ -30,7 +29,6 @@ export class Api {
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`POST ${path} ${res.status}`);
-    // сервер может вернуть пустой ответ — приведём к unknown и вернём как T
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
   }

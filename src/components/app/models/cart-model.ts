@@ -1,4 +1,3 @@
-// src/components/app/models/cart-model.ts
 import { BaseModel } from '../../common/base/model';
 import type { IProduct } from '../../../types';
 

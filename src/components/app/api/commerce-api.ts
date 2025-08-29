@@ -3,7 +3,6 @@ import type { ApiProduct, OrderPayload } from '../../../types';
 
 export class CommerceAPI extends Api {
   async getProducts(): Promise<ApiProduct[]> {
-    // оба эндпоинта могут вернуть либо массив, либо { items: [...] }
     const raw = await this.get<ApiListResponse<ApiProduct> | ApiProduct[]>('/product')
       .catch(() => this.get<ApiListResponse<ApiProduct> | ApiProduct[]>('/products'));
 

@@ -1,7 +1,3 @@
-// src/components/base/events.ts
-
-// Хорошая практика даже простые типы выносить в алиасы
-// Зато когда захотите поменять это достаточно сделать в одном месте
 type EventName = string | RegExp;
 type Subscriber = Function;
 type EmitterEvent = {
@@ -54,14 +50,12 @@ export class EventEmitter implements IEvents {
      */
     emit<T extends object>(eventName: string, data?: T): void {
         this._events.forEach((subscribers, name) => {
-            // слушатели всех событий
             if (name === '*') {
                 subscribers.forEach(cb => (cb as (e: EmitterEvent) => void)({
                     eventName,
                     data
                 }));
             }
-            // точное совпадение имени события или совпадение по RegExp
             if ((name instanceof RegExp && name.test(eventName)) || name === eventName) {
                 subscribers.forEach(cb => (cb as (d: T) => void)(data as T));
             }
@@ -72,7 +66,6 @@ export class EventEmitter implements IEvents {
      * Слушать все события
      */
     onAll(callback: (event: EmitterEvent) => void): void {
-        // подсказка типам: это слушатель формата EmitterEvent
         this.on<EmitterEvent>('*', callback);
     }
 
@@ -80,7 +73,6 @@ export class EventEmitter implements IEvents {
      * Сбросить все обработчики
      */
     offAll(): void {
-        // сохраняем тот же дженерик Map<EventName, ...>, а не Map<string, ...>
         this._events = new Map<EventName, Set<Subscriber>>();
     }
 
