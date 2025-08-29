@@ -7,7 +7,6 @@ type OrderFormState = {
   address: string;
   valid: boolean;
   errors: string;
-  // новое, опционально: показывать ли ошибки сейчас
   showErrors?: boolean;
 };
 

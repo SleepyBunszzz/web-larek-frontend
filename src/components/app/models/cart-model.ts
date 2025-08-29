@@ -1,31 +1,33 @@
+// src/components/app/models/cart-model.ts
 import { BaseModel } from '../../common/base/model';
-import { AppEvents, IProduct } from '../../../types';
+import type { IProduct } from '../../../types';
 
 export class CartModel extends BaseModel {
-  private _items: IProduct[] = [];
+  items: IProduct[] = [];
 
-  get items(): IProduct[] {
-    return this._items;
-  }
-
-  addItem(product: IProduct) {
-    if (!this._items.some((i) => i.id === product.id)) {
-      this._items.push(product);
-      this.emit(AppEvents.CART_UPDATED, this._items);
+  addItem(p: IProduct) {
+    if (!this.items.find(i => i.id === p.id)) {
+      this.items.push(p);
+      this.emit('cart:changed');
     }
   }
 
-  removeItem(productId: string) {
-    this._items = this._items.filter((i) => i.id !== productId);
-    this.emit(AppEvents.CART_UPDATED, this._items);
+  removeItem(id: string) {
+    const before = this.items.length;
+    this.items = this.items.filter(i => i.id !== id);
+    if (this.items.length !== before) {
+      this.emit('cart:changed');
+    }
   }
 
   clearCart() {
-    this._items = [];
-    this.emit(AppEvents.CART_UPDATED, this._items);
+    if (this.items.length) {
+      this.items = [];
+      this.emit('cart:changed');
+    }
   }
 
   getTotal(): number {
-    return this._items.reduce((sum, p) => sum + (p.cost ?? 0), 0);
+    return this.items.reduce((sum, p) => sum + (p.cost ?? 0), 0);
   }
 }

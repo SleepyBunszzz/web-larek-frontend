@@ -41,7 +41,6 @@ export interface IProduct {
   category: string;
 }
 
-
 export interface IAppState {
   products: IProduct[];
   cart: IProduct[];

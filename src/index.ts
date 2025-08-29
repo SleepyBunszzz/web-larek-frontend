@@ -161,7 +161,7 @@ function bindGlobalHandlersOnce(): void {
   events.on('modal:close', () => (page.locked = false));
 
   // обновление корзины
-  events.on(AppEvents.CART_UPDATED ?? ('cart:updated' as any), () => {
+  cart.on('cart:changed', () => {
     renderBasketFromModel();
     updateHeader();
   });
@@ -173,42 +173,38 @@ function bindGlobalHandlersOnce(): void {
       if (payment) order.setPayment(payment);
       if (typeof address === 'string') order.setAddress(address);
 
-      const s1 = order.validateStep1();
-      orderForm.render({
-        payment: order.payment ?? null,
-        address: order.address ?? '',
-        valid: s1.valid,
-        errors: s1.errors,
-        showErrors: step1ShowErrors, // показываем ошибки, только если включён флаг
-      });
+      // const s1 = order.validateStep1();
+      // orderForm.render({
+      //   payment: order.payment ?? null,
+      //   address: order.address ?? '',
+      //   valid: s1.valid,
+      //   errors: s1.errors,
+      //   showErrors: step1ShowErrors, // показываем ошибки, только если включён флаг
+      // });
     }
   );
 
   // пользователь выбрал способ оплаты
   events.on(AppEvents.ORDER_PAYMENT_SELECTED, ({ payment }: { payment: 'card' | 'cash' }) => {
-    order.setPayment(payment);
 
     // если адрес пуст — разрешаем показать ошибку сразу
-    if (!(order.address ?? '').trim()) {
-      step1ShowErrors = true;
-    }
-
-    const s1 = order.validateStep1();
-    orderForm.render({
-      payment: order.payment ?? null,
-      address: order.address ?? '',
-      valid: s1.valid,
-      errors: s1.errors,
-      showErrors: step1ShowErrors, // теперь сообщение об адресе появится
-    });
+    if (!(order.address ?? '').trim()) step1ShowErrors = true;
+    order.setPayment(payment);
+    // const s1 = order.validateStep1();
+    // orderForm.render({
+    //   payment: order.payment ?? null,
+    //   address: order.address ?? '',
+    //   valid: s1.valid,
+    //   errors: s1.errors,
+    //   showErrors: step1ShowErrors, // теперь сообщение об адресе появится
+    // });
   });
 
   // сабмит шага 1
   events.on(AppEvents.ORDER_SUBMITTED ?? ('order:submitted' as any), () => {
     const res = order.validateStep1();
-
     if (!res.valid) {
-      step1ShowErrors = true; // включаем показ ошибок на шаге 1
+      step1ShowErrors = true; 
       orderForm.render({
         payment: order.payment ?? null,
         address: order.address ?? '',
@@ -219,7 +215,7 @@ function bindGlobalHandlersOnce(): void {
       return;
     }
 
-    openOrderStep2(); // переход на шаг 2: там ошибки скрыты до сабмита
+    openOrderStep2();
   });
 
   // контакты: изменения инпутов
@@ -282,7 +278,7 @@ events.on('contacts.name:change', (p: { field: 'name'; value: string }) => {
   });
 
   // универсальный перерисовщик состояния заказа — НЕ скрывает ошибки насильно
-  events.on('order:changed', () => {
+  order.on('order:changed', () => {
     const s1 = order.validateStep1();
     orderForm.render({
       payment: order.payment ?? null,
