@@ -41,6 +41,15 @@ export interface IProduct {
   category: string;
 }
 
+// export interface IProduct {
+//   id: string;
+//   title: string;
+//   description: string;
+//   image: string;
+//   category: string;
+//   price: number;
+// }
+
 export interface IAppState {
   products: IProduct[];
   cart: IProduct[];

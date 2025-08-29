@@ -62,8 +62,6 @@ function renderBasketFromModel(): void {
   const itemsEls: HTMLElement[] = cart.items.map((p, idx) =>
     buildBasketItem(p, idx + 1, (id: string): void => {
       cart.removeItem(id);
-      renderBasketFromModel();
-      updateHeader();
     })
   );
 
@@ -221,15 +219,12 @@ function bindGlobalHandlersOnce(): void {
   // контакты: изменения инпутов
 events.on('contacts.email:change', (p: { field: 'email'; value: string }) => {
   order.setEmail(p.value);
-  events.emit('order:changed');
 });
 events.on('contacts.phone:change', (p: { field: 'phone'; value: string }) => {
   order.setPhone(p.value);
-  events.emit('order:changed');
 });
 events.on('contacts.name:change', (p: { field: 'name'; value: string }) => {
   order.setName(p.value);
-  events.emit('order:changed');
 });
 
 
@@ -305,7 +300,7 @@ async function init(): Promise<void> {
   bindGlobalHandlersOnce();
 
   try {
-    const productsList = await api.getProducts() as IProduct[];
+    const productsList = await api.getProducts();
     products.setProducts(productsList);
 
     renderCatalog();
