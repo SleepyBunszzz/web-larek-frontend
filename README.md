@@ -82,10 +82,9 @@ export interface IEventEmitter {
 }
 ```
 
-Нормализованные данные приложения
+В приложении данные приводятся к виду:
 
 ```
-В приложении данные приводятся к виду:
 interface IProduct {
   id: string;
   name: string;
@@ -95,15 +94,17 @@ interface IProduct {
   category: string; // из ApiProduct.category
 }
 ```
-Payload заказа
+Платёж / заказ
 
 ```
-export type OrderPayload = {
-  payment: 'card' | 'cash';
+type PaymentMethod = 'card' | 'cash';
+
+type OrderPayload = {
+  payment: PaymentMethod;
   address: string;
   email: string;
   phone: string;
-  items: string[]; // массив id товаров
+  items: string[];
   total: number;
 }
 ```
@@ -115,6 +116,31 @@ export type OrderPayload = {
 - Модели(Model) - слой данных, отвечает за хранение и изменение данных;
 - Презентор(Presenter) - слой, отвечающий за связь представления и данных.
 
+События
+
+```
+enum AppEvents {
+  PRODUCTS_LOADED = 'products:loaded',
+  PRODUCT_PREVIEW = 'product:preview',
+  CART_UPDATED    = 'cart:updated',
+
+  BASKET_OPEN     = 'basket:open',
+  ORDER_OPEN      = 'order:open',
+  MODAL_OPEN      = 'modal:open',
+  MODAL_CLOSE     = 'modal:close',
+
+  ORDER_ADDRESS_CHANGED   = 'order.address:changed',
+  ORDER_PAYMENT_SELECTED  = 'order:payment-selected',
+  ORDER_SUBMITTED         = 'order:submitted',
+}
+
+// Дополнительно:
+'order:changed'
+'contacts.email:change'
+'contacts.phone:change'
+'contacts.name:change'
+'contacts:submit'
+```
 
 ### Базовые классы
 
@@ -133,6 +159,22 @@ export type OrderPayload = {
 - `off(event, callback)` — отписка от события.
 - `trigger` - возвращает функцию, при вызове которой инициализируется требуемое в параметрах событие.
 
+### Component<TState>
+Базовый класс для всех представлений.
+
+Поля:
+- protected readonly el: HTMLElement — корневой элемент
+- protected state: Partial<TState> — состояние
+
+Методы:
+- render(next?: Partial<TState>): HTMLElement — сливает state и вызывает onRender()
+- protected onRender(): void — переопределяется потомками: «перенос state в DOM»
+- protected setText(el, value) — устанавливает текст
+- protected setImage(img, src, alt?) — устанавливает картинку
+- protected setDisabled(el, disabled) — дизейблит кнопки/элементы
+- protected toggleClass(el, className, force?)
+- protected setHidden(el) / setVisible(el)
+  
 ### Модели данных
 
 #### Класс ProductModel
@@ -158,12 +200,14 @@ export type OrderPayload = {
 - getTotal() — возвращает общую стоимость
 
 #### Класс OrderModel
-Хранит данные для оформления заказа и проверяет их корректность.
+Модель заказа хранит и валидирует данные двух шагов оформления (адрес/оплата и контакты). Используется презентером для подготовки состояний форм и проверки данных перед отправкой на сервер.
+
 Поля:
-- payment: 'card' | 'cash' | null — способ оплаты
+- payment: PaymentMethod | null — способ оплаты
 - address: string - адрес доставки
 - email: string - электронная почта покупателя
 - phone: string - номер телефона для связи.
+- name?: string - необязательное поле имени (в шаблоне может отсутствовать).
 
 Методы:
 - setPayment(method: 'card' | 'cash'): void— сохранить выбранный способ оплаты
@@ -171,30 +215,30 @@ export type OrderPayload = {
 - setEmail(value: string): void — сохранить электронную почту
 - setPhone(value: string): void — сохранить телефон
 - validate(): boolean — проверяет, что выбран способ оплаты, адрес и контакты (e-mail/телефон).
-
-### API слой
-
-#### Интерфейс ICommerceAPI
-Расширяет IApiClient
-
-Методы:
-- getProducts() — получает список всех товаров
-- getProductById(id) — получает один товар по ID
-- createOrder(order) — оформить заказ.
+- validateStep1(): { valid: boolean; errors: string } - проверка первого шага (адрес + оплата)
+- validateAll(): { valid: boolean; errors: string } - проверка обоих шагов: сперва validateStep1(), затем контакты.
+- reset(): void - полный сброс состояния заказа (удобно вызывать после успешной отправки)
+- toOrderFormState(): { payment: PaymentMethod | null; address: string; valid: boolean; errors: string } - формирует состояние для OrderForm (шаг 1). Презентер напрямую передаёт этот объект в orderForm.render(...).
+- toContactsFormState(): { name?: string; email: string; phone: string; valid: boolean; errors: string } - формирует состояние для ContactsForm (шаг 2). Презентер передаёт его в contactsForm.render(...).
 
 ### Представления (Views)
 Классы отображают данные внутри переданных контейнеров. Все они наследуются от Component или специализированных базовых классов.
 
-#### Класс Component
-Базовый класс Component предоставляет единый цикл рендера:
+#### Класс Page
+Контейнер главной страницы: каталог, кнопка корзины, счётчик, блокировка скролла при открытии модалки.
 
-- render(data?: unknown): HTMLElement — вызывается презентером, сохраняет данные и вызывает update(data), после чего возвращает корневой элемент компонента.
-- protected update(data?: unknown): void — абстрактный метод, который реализуют потомки.
+Поля
+- _counter: HTMLElement — .header__basket-counter
+- _catalog: HTMLElement — .gallery
+- _wrapper: HTMLElement — .page__wrapper
+- _basket: HTMLElement — .header__basket
 
-Вспомогательные методы:
-- setText(node, text) — текст в элементe
-- setImage(node, src, alt?) — картинка (src, alt) у <img>
-- setDisabled(el, state) — включить/выключить кнопку
+Методы
+- constructor(container: HTMLElement, events: IEvents) - Вешает клик на _basket → events.emit('basket:open').
+- set counter(value: number) - Обновляет число в шапке.
+- set catalog(items: HTMLElement[]) - Перерисовывает каталог (replaceChildren).
+- set locked(value: boolean) - Тогглит класс .page__wrapper_locked.
+- render(data: { counter: number; catalog: HTMLElement[]; locked: boolean }): HTMLElement - Вызывает сеттеры и возвращает контейнер.
 
 #### Класс Modal
 Реализует модальное окно. Управляет открытием/закрытием, устанавливает слушатели на клик по фону и кнопке-крестику.
@@ -202,12 +246,13 @@ export type OrderPayload = {
 Поля:
 - _closeButton: HTMLButtonElement — кнопка закрытия
 - _content: HTMLElement — контейнер для содержимого
-- events: IEventEmitter — брокер событий
 
 Методы:
+- constructor(container: HTMLElement, events: IEventEmitter) - вызывается при создании экземпляра класса через new
 - open() — открыть модалку
 - close() — закрыть модалку
-- content = element — вставить содержимое
+- set content(node: HTMLElement) — вставка содержимого
+- Внутри эмитит modal:open/modal:close
 
 #### Класс ProductCard
 Карточка товара в каталоге (кликабельна — открывает предпросмотр).
@@ -217,32 +262,31 @@ export type OrderPayload = {
 - category?: HTMLElement — .card__category
 - price?: HTMLElement — .card__price
 - image?: HTMLImageElement — .card__image
-- props?: { onPreview?: (id: string) => void } — колбэк на открытие превью
+- protected _id: string | null — внутренний id товара (устанавливается при рендере через applyBase)
 
 Методы
-- constructor(container: HTMLElement, props?: { onPreview?: (id: string) => void })
-- Вешает обработчик клика на всю карточку. По клику берёт this.el.dataset.id и вызывает props.onPreview(id).
-- render(data: IProduct): HTMLElement
-- Проставляет data-id.
-- Устанавливает текст/картинку: title, category, price, image.
-- Возвращает контейнер.
+- constructor(container: HTMLElement, { onPreview? }: { onPreview?: (id: string) => void }) - Сохраняет ссылки на элементы, навешивает клик на корневой элемент this.el. По клику, если _id установлен, вызывает onPreview(_id).
+- render(data: IProduct): HTMLElement - Вызывает super.render(product) и применяет базовое заполнение через applyBase(product):
+_id = product.id
+setText(title, product.name)
+setText(price, formatNumber(product.cost))
+setImage(image, product.img_url, product.name)
+если есть category — выставляет текст и CSS-класс категории
+Возвращает this.el.
 
 #### Класс ProductCardPreview
 Карточка предпросмотра: картинка, описание, категория, цена и кнопка покупки/удаления из корзины.
 
 Поля
-- title?: HTMLElement — .card__title
-- text?: HTMLElement — .card__text, .card__description
-- price?: HTMLElement — .card__price
-- image?: HTMLImageElement — .card__image
-- category?: HTMLElement — .card__category
-- btn?: HTMLButtonElement — .card__button или [data-role="toggle-cart"]
-- props: { onToggleCart: (id: string) => void } — колбэк на добавление/удаление из корзины
+- text? : HTMLElement — описание (.card__text или .card__description)
+- btn? : HTMLButtonElement — кнопка добавления/удаления (.card__button или [data-role="toggle-cart"])
+- protected _id: string | null — id товара
+- поля как в ProductCard (title?, category?, price?, image?)
 
 Методы
-- constructor(container: HTMLElement, props: { onToggleCart: (id: string) => void }) - Вешает обработчик на кнопку: читает this.el.dataset.id и вызывает onToggleCart(id).
-- render(data: IProduct & { inCart?: boolean }): HTMLElement - Проставляет data-id. Oбновляет title, text, price, category, image. Изменяет текст кнопки:если inCart === true → «Убрать из корзины» иначе → «Купить»
-- Возвращает контейнер.
+- constructor(container: HTMLElement, props: { onToggleCart: (id: string) => void }) - Вешает обработчик на кнопку: при клике, если _id задан, вызывает onToggleCart(_id).
+- render(product: IProduct & { inCart?: boolean }): HTMLElement - Проставляет data-id. Oбновляет text, price, casuper.render(product) и applyBase(product) (заголовок, картинка, категория).
+
 
 #### Класс Basket
 Модальное представление корзины.
@@ -263,74 +307,60 @@ export type OrderPayload = {
 #### Класс» BasketItemView
 Компонент отображает один товар в списке корзины. Наследуется от базового Component и содержит только логику, общую для всех представлений (установка текста, отключение элементов и т. п.).
 
-Заполняет:
-- .basket__item-index — порядковый номер
-- .card__title — название
-- .card__price — цена (formatNumber)
-- .basket__item-delete, .card__button - кнопка удаления
+Поля:
+- .basket__item-index : HTMLElement — порядковый номер
+- .card__title : HTMLElement — название
+- .card__price : HTMLElement — цена (formatNumber)
+- .basket__item-delete : HTMLElement - кнопка удаления
 
 Методы:
-- constructor(container: HTMLElement, props: BasketItemProps) — сохраняет ссылки на элементы и вешает обработчик удаления. Идентификатор товара берётся из data-id корневого узла.
--  render(product: IProduct): HTMLElement — вызывает super.render(product) и возвращает корневой элемент
--  protected update(data?: unknown): void — применяет данные к DOM
--  
-#### Класс Page
-Контейнер главной страницы: каталог, кнопка корзины, счётчик, блокировка скролла при открытии модалки.
+- constructor(container: HTMLElement, { index, onDelete }: { index: number; onDelete: (id: string) => void }) — Находит элементы, навешивает обработчик на кнопку удаления: при клике, если _id установлен, вызывает onDelete(_id).
+-  render(product: IProduct): HTMLElement — Заполняет: 
+-  _id = product.id
+- setText(.card__title, product.name)
+- setText(.card__price, formatNumber(product.cost))
+- setText(.basket__item-index, String(index))
+- Возвращает this.el.
 
-Поля
-- _counter: HTMLElement — .header__basket-counter
-- _catalog: HTMLElement — .gallery
-- _wrapper: HTMLElement — .page__wrapper
-- _basket: HTMLElement — .header__basket
-- events: IEvents
-
-Методы
-- constructor(container: HTMLElement, events: IEvents) - Вешает клик на _basket → events.emit('basket:open').
-- set counter(value: number) - Обновляет число в шапке.
-- set catalog(items: HTMLElement[]) - Перерисовывает каталог (replaceChildren).
-- set locked(value: boolean) - Тогглит класс .page__wrapper_locked.
-- render(data: { counter: number; catalog: HTMLElement[]; locked: boolean }): HTMLElement - Вызывает сеттеры и возвращает контейнер.
 
 #### Класс OrderForm
 Компонент не хранит данных и не валидирует их. В обработчиках событий только эмитит ORDER_ADDRESS_CHANGED и ORDER_SUBMITTED. Переключение способа оплаты, ошибки и доступность кнопки управляются исключительно через render(state), где state формируется моделью и передаётся презентером
 
 Поля
-- el: HTMLFormElement
-- events: EventEmitter
 - inputAddress: HTMLInputElement — input[name="address"]
 - btnCard: HTMLButtonElement — button[name="card"]
 - btnCash: HTMLButtonElement — button[name="cash"]
 - submitBtn: HTMLButtonElement — .order__button
-- errorsEl: HTMLElement | null — .form__errors
-  
+- errorsEl?: HTMLElement — .form__errors (может отсутствовать в шаблоне)events: EventEmitter — брокер событий (передаётся в конструктор)
+
+
 Методы
-- constructor(container: HTMLFormElement, events: EventEmitter) - Слушает:
-ввод адреса → emitAddressChanged() + validateAndToggle()
-клик «Онлайн» → setPayment('card') → emitAddressChanged() → validateAndToggle()
-клик «При получении» → setPayment('cash') → emitAddressChanged() → validateAndToggle()
-submit → validateAndToggle() → events.emit(AppEvents.ORDER_SUBMITTED)
-- setInitialPayment(method: PaymentMethod): void - Выставляет оплату по умолчанию (подсветка кнопки), эмитит событие и запускает валидацию.
-- set valid(v: boolean) - Активирует/деактивирует «Далее».
-- set errors(msg: string) - Пишет текст ошибки (или очищает).
-- render(opts: { valid: boolean; errors: string }): HTMLElement - Применяет состояние и возвращает форму.
+- constructor(container: HTMLElement, events: EventEmitter) — эмитит:
+  1. ORDER_ADDRESS_CHANGED — на ввод адреса / смену способа оплаты
+(передаётся { address, payment? })
+  2. ORDER_SUBMITTED — на submit формы
+- set valid(v: boolean) — включает/выключает кнопку «Далее» (setDisabled(submitBtn, !v))
+- set errors(msg: string) — показывает сообщение об ошибке в errorsEl (setText)
+- render({ payment, address, valid, errors }): HTMLElement — применяет состояние: подсветка активной оплаты, актуальный адрес, блокировка кнопки, ошибки; возвращает форму.
 
 #### Класс ContactsForm
 Форма второго шага: контакты. Поддерживает опциональное поле name (может отсутствовать в шаблоне). Не содержит валидации. Эмитит изменения полей и submit. Кнопку “Оплатить” активирует по valid, ошибки берёт из errors, переданных презентером.
 
 Поля
-- el: HTMLFormElement
-- events: EventEmitter
 - inputEmail: HTMLInputElement — input[name="email"]
 - inputPhone: HTMLInputElement — input[name="phone"]
-- inputName: HTMLInputElement | null — input[name="name"] (может быть null)
+- inputName?: HTMLInputElement — input[name="name"] (может отсутствовать)
 - submitBtn: HTMLButtonElement — button[type="submit"]
-- errorsEl: HTMLElement | null — .form__errors
+- errorsEl?: HTMLElement — .form__errors
+- events: EventEmitter
 
 Методы
-- constructor(container: HTMLFormElement, events: EventEmitter) - слушает изменения полей и отправку формы
-- set valid(v: boolean) - активирует/деактивирует «Оплатить».
-- set errors(msg: string) - отображает ошибки валидации.
-- render(opts: { valid: boolean; errors: string }): HTMLElement - применяет состояние.
+- constructor(container: HTMLElement, events: EventEmitter) — эмитит:
+1. 'contacts.email:change' | 'contacts.phone:change' | 'contacts.name:change' — при вводе соответствующих полей
+2. 'contacts:submit' — при отправке формы
+- set valid(v: boolean) — включает/выключает кнопку «Оплатить»
+- set errors(msg: string) — отображает ошибки валидации
+- render({ name?, email, phone, valid, errors }): HTMLElement — заполняет значения инпутов, применяет valid/errors, возвращает форму.
 
 
 #### Класс SuccessView
@@ -338,24 +368,25 @@ submit → validateAndToggle() → events.emit(AppEvents.ORDER_SUBMITTED)
 
 Поля
 - totalEl: HTMLElement — .order-success__description
-- closeBtn: HTMLButtonElement — .order-success__close
+- closeBtn: HTMLButtonElement —  order-success__close
 
 Методы
-- constructor(container: HTMLElement) - Находит элементы, не вешает свои события (колбэк приходит в render).
-- render(data: { total: number; onClose: () => void }): HTMLElement - Пишет сумму: Списано {total} (через formatNumber).
-- Вешает клик на кнопку закрытия (once: true) → вызывает onClose().
-- Возвращает контейнер.
+- render({ total, onClose }: { total: number; onClose: () => void }): HTMLElement — проставляет текст суммы через formatNumber(total), навешивает клик на кнопку закрытия (вызовет onClose()); возвращает контейнер.
 
 ### Презентер
 В проекте используется один презентер, код которого находится в index.ts.
 Задачи:
-1. Подписывается на события от View
-2. Обновляет модели
-3. Управляет отображением модальных окон
-4. Загружает данные через API
-5. Обновляет View при изменениях в моделях
+1. Загружает товары из API (ICommerceAPI.getProducts() → IProduct[]) и кладёт в ProductModel.
+2. Рендерит каталог по модели.
+3. Реагирует на клики пользователя из View (добавление/удаление из корзины, ввод адреса/контактов).
+4. Обновляет модели и централизованно перерисовывает View по событию модели 'order:changed' и CART_UPDATED.
+5. Управляет модалками (basket, order step 1/2, success).
 
-Основной поток:
-- Загрузка товаров → ProductModel → обновление каталога.
-- Добавление в корзину → CartModel → обновление корзины.
-- Оформление заказа → проверка в OrderModel.validate() → отправка через ICommerceAPI.
+### API
+
+ICommerceAPI (расширяет IApiClient):
+- getProducts(): Promise<IProduct[]> - Загружает список всех доступных товаров с сервера и преобразует их к внутреннему типу IProduct.
+- getProductById(id: string): Promise<IProduct> - олучает детальную информацию по одному товару по его идентификатору.
+- createOrder(order: OrderPayload): Promise<void> - Отправляет данные заказа на сервер для оформления.
+
+Итоговую сумму в UI берём из CartModel.getTotal() после успешного заказа.

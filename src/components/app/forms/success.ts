@@ -7,24 +7,22 @@ export class SuccessView extends Component<SuccessData> {
   private totalEl: HTMLElement; 
   private closeBtn: HTMLButtonElement; 
  
-  private onCloseCallback: (() => void) | null = null; 
- 
   constructor(container: HTMLElement) { 
     super(container); 
     this.totalEl = ensureElement<HTMLElement>('.order-success__description', container); 
     this.closeBtn = ensureElement<HTMLButtonElement>('.order-success__close', container); 
  
     this.closeBtn.addEventListener('click', () => { 
-      this.onCloseCallback?.(); 
+       this.state.onClose?.();
     }); 
   } 
  
-  render(data: SuccessData): HTMLElement { 
-    super.render(data);
-    this.totalEl.textContent = `Списано ${formatNumber(data.total)}`; 
- 
-    this.onCloseCallback = data.onClose; 
- 
-    return this.el; 
-  } 
-} 
+protected onRender(): void {
+    if (typeof this.state.total === 'number') {
+      this.setText(this.totalEl, `Списано ${formatNumber(this.state.total)} синапсов`);
+    }
+  }
+   render(data: SuccessData): HTMLElement {
+    return super.render(data);
+  }
+}

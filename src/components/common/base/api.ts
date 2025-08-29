@@ -1,42 +1,35 @@
-export type ApiListResponse<Type> = {
-    total: number,
-    items: Type[]
-};
-
-export type ApiPostMethods = 'POST' | 'PUT' | 'DELETE';
+export interface ApiListResponse<T> {
+  items: T[];
+}
 
 export class Api {
-    readonly baseUrl: string;
-    protected options: RequestInit;
+  constructor(private baseUrl: string, private options: RequestInit = {}) {}
 
-    constructor(baseUrl: string, options: RequestInit = {}) {
-        this.baseUrl = baseUrl;
-        this.options = {
-            headers: {
-                'Content-Type': 'application/json',
-                ...(options.headers as object ?? {})
-            }
-        };
-    }
+  async get<T = unknown>(path: string): Promise<T> {
+    const res = await fetch(this.baseUrl + path, {
+      ...this.options,
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(this.options.headers ?? {}),
+      },
+    });
+    if (!res.ok) throw new Error(`GET ${path} ${res.status}`);
+    return (await res.json()) as T;
+  }
 
-    protected handleResponse(response: Response): Promise<object> {
-        if (response.ok) return response.json();
-        else return response.json()
-            .then(data => Promise.reject(data.error ?? response.statusText));
-    }
-
-    get(uri: string) {
-        return fetch(this.baseUrl + uri, {
-            ...this.options,
-            method: 'GET'
-        }).then(this.handleResponse);
-    }
-
-    post(uri: string, data: object, method: ApiPostMethods = 'POST') {
-        return fetch(this.baseUrl + uri, {
-            ...this.options,
-            method,
-            body: JSON.stringify(data)
-        }).then(this.handleResponse);
-    }
+  async post<T = unknown, B = unknown>(path: string, body: B): Promise<T> {
+    const res = await fetch(this.baseUrl + path, {
+      ...this.options,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(this.options.headers ?? {}),
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`POST ${path} ${res.status}`);
+    if (res.status === 204) return undefined as T;
+    return (await res.json()) as T;
+  }
 }

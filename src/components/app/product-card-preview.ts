@@ -32,13 +32,13 @@ export class ProductCardPreview extends BaseProductCard<PreviewData> {
 
     if (this.btn) {
       if (data.cost <= 0) {
-        this.btn.textContent = 'Недоступно';
+        this.setText(this.btn, 'Недоступно'); 
         this.setDisabled(this.btn, true);
         this.btn.classList.add('is-disabled');
       } else {
         this.setDisabled(this.btn, false);
         this.btn.classList.remove('is-disabled');
-        this.btn.textContent = data.inCart ? 'Убрать из корзины' : 'Купить';
+        this.setText(this.btn, data.inCart ? 'Убрать из корзины' : 'Купить');
       }
     }
 

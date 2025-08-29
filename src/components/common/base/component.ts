@@ -1,37 +1,56 @@
-export abstract class Component<TData = unknown> {
-  protected readonly container: HTMLElement;
+export abstract class Component<TState = unknown> {
+  protected readonly el: HTMLElement;
+  protected state: Partial<TState> = {};
 
   constructor(container: HTMLElement) {
-    this.container = container;
+    this.el = container;
+  }
+  public get container(): HTMLElement {
+    return this.el;
   }
 
-  render(_data?: TData): HTMLElement {
-    return this.container;
-  }
-
-  protected setText(el: Element | null | undefined, text?: string | number) {
-    if (el && typeof text !== 'undefined' && el instanceof HTMLElement) {
-      el.textContent = String(text);
+  render(next?: Partial<TState>): HTMLElement {
+    if (next) {
+      this.state = { ...this.state, ...next };
     }
+    this.onRender();
+    return this.el;
   }
 
-  protected setImage(el: Element | null | undefined, src?: string, alt?: string) {
-    if (el instanceof HTMLImageElement && src) {
-      el.src = src;
-      if (typeof alt !== 'undefined') el.alt = alt;
-    }
+  protected onRender(): void {
   }
 
-  protected setDisabled(el: Element | null | undefined, disabled = true) {
+  protected setText(el: Element | null, value?: string | number) {
     if (!el) return;
-    const htmlEl = el as HTMLElement & { disabled?: boolean };
-    if ('disabled' in htmlEl) htmlEl.disabled = disabled;
-    htmlEl.classList.toggle('is-disabled', disabled);
+    (el as HTMLElement).textContent = String(value ?? '');
   }
 
-  get el(): HTMLElement {
-    return this.container;
+  protected setImage(img: HTMLImageElement | null, src?: string, alt?: string) {
+    if (!img || !src) return;
+    img.src = src;
+    if (alt !== undefined) img.alt = alt;
+  }
+
+  protected setDisabled(el: Element | null, disabled: boolean) {
+    if (!el) return;
+    if (el instanceof HTMLButtonElement) {
+      el.disabled = disabled;
+    } else {
+      (el as HTMLElement).toggleAttribute?.('disabled', disabled);
+    }
+    (el as HTMLElement).classList.toggle('is-disabled', disabled);
+  }
+
+  protected toggleClass(el: Element | null, className: string, force?: boolean) {
+    if (!el) return;
+    el.classList.toggle(className, force);
+  }
+
+  protected setHidden(el: Element | null) {
+    el?.classList.add('hidden');
+  }
+
+  protected setVisible(el: Element | null) {
+    el?.classList.remove('hidden');
   }
 }
-
-
