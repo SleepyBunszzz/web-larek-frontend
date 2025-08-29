@@ -122,7 +122,7 @@ type OrderPayload = {
 enum AppEvents {
   PRODUCTS_LOADED = 'products:loaded',
   PRODUCT_PREVIEW = 'product:preview',
-  CART_UPDATED    = 'cart:updated',
+  CART_UPDATED    = 'cart:changed,
 
   BASKET_OPEN     = 'basket:open',
   ORDER_OPEN      = 'order:open',
@@ -133,13 +133,6 @@ enum AppEvents {
   ORDER_PAYMENT_SELECTED  = 'order:payment-selected',
   ORDER_SUBMITTED         = 'order:submitted',
 }
-
-// Дополнительно:
-'order:changed'
-'contacts.email:change'
-'contacts.phone:change'
-'contacts.name:change'
-'contacts:submit'
 ```
 
 ### Базовые классы
@@ -148,16 +141,16 @@ enum AppEvents {
 Содержит в себе базовую логику отправки запроса. В конструктор передается базовый адрес сервера и опциональный объект с заголовками запросов.
 Методы:
 - `get` - выполняет GET запрос на переданный в параметрах эндпоинт и возвращает промис с объектом, которым ответил сервер.
-- `post` - принимает объект с данными, которые будут переданы в JSON в теле запроса, и отправляет эти данные на эндпоинт, переданный, как параметр при вызове метода. По умолчанию выполняется `POST` запрос, но метод запроса может быть переопределен заданием третьего параметра при вызове.
+- `post` - принимает объект с данными, которые будут переданы в JSON в теле запроса, и отправляет эти данные на эндпоинт, переданный, как параметр при вызове метода. По умолчанию выполняется `POST` запрос
 Пример: загрузка товаров, оформление заказа.
 
 #### Класс EventEmitter
 Брокер событий позволяет отправить события и подписаться на события, происходящие в системе. Класс используется в презентере для обработки событий и в слоях приложения для генерации событий.
-Основные методы, реализуемые классом описаны интерфейсом `IEventEmitter`:
-- `on` - подписка на событие;
-- `emit` - инициализация события;
-- `off(event, callback)` — отписка от события.
-- `trigger` - возвращает функцию, при вызове которой инициализируется требуемое в параметрах событие.
+Основные методы, реализуемые классом описаны интерфейсом EventEmitter (IEvents):
+- `on(event: string|RegExp, cb: (data:any)=>void)` - подписка на событие;
+- `emit(event: string, data?)` - инициализация события;
+- `off(event: string|RegExp, cb)` — отписка от события.
+- `trigger(event: string, context?) => (data)=>void` - возвращает функцию, при вызове которой инициализируется требуемое в параметрах событие.
 
 ### Component<TState>
 Базовый класс для всех представлений.
@@ -383,10 +376,10 @@ setImage(image, product.img_url, product.name)
 5. Управляет модалками (basket, order step 1/2, success).
 
 ### API
-
-ICommerceAPI (расширяет IApiClient):
-- getProducts(): Promise<IProduct[]> - Загружает список всех доступных товаров с сервера и преобразует их к внутреннему типу IProduct.
-- getProductById(id: string): Promise<IProduct> - олучает детальную информацию по одному товару по его идентификатору.
+Сервер отдаёт ApiProduct, а маппинг в IProduct делает ProductModel.
+ICommerceAPI:
+- getProducts(): Promise<ApiProduct[]> - Загружает список всех доступных товаров с сервера и преобразует их к внутреннему типу IProduct.
+- getProductById(id: string): Promise<ApiProduct>- олучает детальную информацию по одному товару по его идентификатору.
 - createOrder(order: OrderPayload): Promise<void> - Отправляет данные заказа на сервер для оформления.
 
-Итоговую сумму в UI берём из CartModel.getTotal() после успешного заказа.
+Цепочка потока данных: Presenter -> api.getProducts() -> productModel.setProducts(raw) -> mapToProduct -> View.
