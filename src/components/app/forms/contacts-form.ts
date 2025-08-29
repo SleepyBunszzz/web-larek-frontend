@@ -7,6 +7,7 @@ export type ContactsFormState = {
   phone?: string;
   valid: boolean;
   errors: string;
+  showErrors?: boolean;
 };
 
 export class ContactsForm {
@@ -29,6 +30,7 @@ export class ContactsForm {
     this.submitBtn  = ensureElement<HTMLButtonElement>('button[type="submit"]', this.el);
     this.inputName = this.el.querySelector<HTMLInputElement>('input[name="name"]');
     this.errorsEl  = this.el.querySelector<HTMLElement>('.form__errors');
+    
     this.inputEmail.addEventListener('input', () => {
       this.events.emit('contacts.email:change', { field: 'email', value: this.inputEmail.value });
     });
@@ -68,7 +70,9 @@ export class ContactsForm {
     }
 
     this.valid  = !!state.valid;
-    this.errors = state.errors ?? '';
+    const shouldShowErrors = state.showErrors === true;
+    this.errors = shouldShowErrors ? (state.errors ?? '') : '';
+
 
     return this.el;
   }

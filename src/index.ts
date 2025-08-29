@@ -24,7 +24,7 @@ import { API_URL } from './utils/constants';
 import type { IProduct, OrderPayload } from './types';
 import { AppEvents } from './types';
 
-
+// ---- глобальные экземпляры
 const events = new EventEmitter();
 const api = new CommerceAPI(API_URL, {});
 const page = new Page(document.body, events);
@@ -32,11 +32,17 @@ const modal = new Modal(ensureElement('#modal-container'), events);
 const products = new ProductModel();
 const cart = new CartModel();
 const order = new OrderModel();
+
 const basketView   = new Basket(cloneTemplate<HTMLDivElement>('#basket'), events);
 const orderForm    = new OrderForm(cloneTemplate<HTMLFormElement>('#order'), events);
 const contactsForm = new ContactsForm(cloneTemplate<HTMLFormElement>('#contacts'), events);
 const successView  = new SuccessView(cloneTemplate<HTMLDivElement>('#success'));
 
+// ---- флаги показа ошибок на шагах
+let step1ShowErrors = false; // шаг 1: адрес + способ оплаты
+let step2ShowErrors = false; // шаг 2: контакты
+
+// ---- рендеры каталога/корзины/шапки
 function renderCatalog(): void {
   if (!products.products.length) {
     page.render({ counter: cart.items.length, catalog: [], locked: false });
@@ -72,23 +78,7 @@ function updateHeader(): void {
   page.counter = cart.items.length;
 }
 
-function renderContactsFromModel(): void {
-  if (typeof (order as any).toContactsFormState === 'function') {
-    contactsForm.render(order.toContactsFormState());
-    return;
-  }
-
-  const emailNotEmpty = (order.email ?? '').trim().length > 0;
-  const phoneNotEmpty = (order.phone ?? '').trim().length > 0;
-  contactsForm.render({
-    name: order.name ?? '',
-    email: order.email ?? '',
-    phone: order.phone ?? '',
-    valid: emailNotEmpty && phoneNotEmpty,
-    errors: emailNotEmpty && phoneNotEmpty ? '' : 'Заполните все поля формы',
-  });
-}
-
+// ---- модалки
 function openBasket(): void {
   modal.render({
     content: basketView.render({
@@ -134,18 +124,23 @@ function openPreview(productId: string): void {
 function openOrderStep1(): void {
   if (!order.payment) order.setPayment('card');
 
+  const res = order.validateStep1();
   const formEl = orderForm.render({
     payment: order.payment ?? null,
     address: order.address ?? '',
-    valid: order.validateStep1().valid,
-    errors: order.validateStep1().errors,
+    valid: res.valid,
+    errors: res.errors,
+    showErrors: false, // скрываем ошибки до сабмита/клика
   });
 
+  step1ShowErrors = false; // сброс флага при открытии шага
   modal.render({ content: formEl });
 }
 
 function openOrderStep2(): void {
-  const el = contactsForm.render(order.toContactsFormState());
+  const state = order.toContactsFormState();
+  const el = contactsForm.render({ ...state, showErrors: false }); // скрыть до сабмита
+  step2ShowErrors = false; // сброс флага при открытии
   modal.render({ content: el });
 }
 
@@ -157,55 +152,102 @@ function openSuccess(total: number): void {
   modal.render({ content: successEl });
 }
 
+// ---- биндим глобальные обработчики
 function bindGlobalHandlersOnce(): void {
+  // системные/страничные события
   events.on('basket:open', () => openBasket());
   events.on('order:open', () => openOrderStep1());
   events.on('modal:open', () => (page.locked = true));
   events.on('modal:close', () => (page.locked = false));
+
+  // обновление корзины
   events.on(AppEvents.CART_UPDATED ?? ('cart:updated' as any), () => {
     renderBasketFromModel();
     updateHeader();
   });
 
-  events.on(AppEvents.ORDER_ADDRESS_CHANGED ?? ('order:address:changed' as any),
+  // изменение адреса и (по желанию) одновременная установка оплаты
+  events.on(
+    AppEvents.ORDER_ADDRESS_CHANGED ?? ('order:address:changed' as any),
     ({ payment, address }: { payment: 'card' | 'cash' | null; address: string }) => {
       if (payment) order.setPayment(payment);
       if (typeof address === 'string') order.setAddress(address);
-      events.emit('order:changed');
+
+      const s1 = order.validateStep1();
+      orderForm.render({
+        payment: order.payment ?? null,
+        address: order.address ?? '',
+        valid: s1.valid,
+        errors: s1.errors,
+        showErrors: step1ShowErrors, // показываем ошибки, только если включён флаг
+      });
     }
   );
 
+  // пользователь выбрал способ оплаты
+  events.on(AppEvents.ORDER_PAYMENT_SELECTED, ({ payment }: { payment: 'card' | 'cash' }) => {
+    order.setPayment(payment);
+
+    // если адрес пуст — разрешаем показать ошибку сразу
+    if (!(order.address ?? '').trim()) {
+      step1ShowErrors = true;
+    }
+
+    const s1 = order.validateStep1();
+    orderForm.render({
+      payment: order.payment ?? null,
+      address: order.address ?? '',
+      valid: s1.valid,
+      errors: s1.errors,
+      showErrors: step1ShowErrors, // теперь сообщение об адресе появится
+    });
+  });
+
+  // сабмит шага 1
   events.on(AppEvents.ORDER_SUBMITTED ?? ('order:submitted' as any), () => {
     const res = order.validateStep1();
+
     if (!res.valid) {
+      step1ShowErrors = true; // включаем показ ошибок на шаге 1
       orderForm.render({
         payment: order.payment ?? null,
         address: order.address ?? '',
         valid: res.valid,
         errors: res.errors,
+        showErrors: true,
       });
       return;
     }
-    openOrderStep2();
+
+    openOrderStep2(); // переход на шаг 2: там ошибки скрыты до сабмита
   });
 
-  events.on('contacts.email:change', (p: { field: 'email'; value: string }) => {
-    order.setEmail(p.value);
-    events.emit('order:changed');
-  });
-  events.on('contacts.phone:change', (p: { field: 'phone'; value: string }) => {
-    order.setPhone(p.value);
-    events.emit('order:changed');
-  });
-  events.on('contacts.name:change', (p: { field: 'name'; value: string }) => {
-    order.setName(p.value);
-    events.emit('order:changed');
-  });
+  // контакты: изменения инпутов
+events.on('contacts.email:change', (p: { field: 'email'; value: string }) => {
+  order.setEmail(p.value);
+  events.emit('order:changed');
+});
+events.on('contacts.phone:change', (p: { field: 'phone'; value: string }) => {
+  order.setPhone(p.value);
+  events.emit('order:changed');
+});
+events.on('contacts.name:change', (p: { field: 'name'; value: string }) => {
+  order.setName(p.value);
+  events.emit('order:changed');
+});
 
+
+  // сабмит шага 2 (оплата)
   events.on('contacts:submit', async () => {
-    const res = order.validateAll();
+    const res = order.validateContacts();
     if (!res.valid) {
-      contactsForm.render({ ...order.toContactsFormState(), valid: false, errors: res.errors || 'Заполните все поля формы' });
+      step2ShowErrors = true;
+      contactsForm.render({
+        ...order.toContactsFormState(),
+        valid: false,
+        errors: res.errors || 'Заполните все поля формы',
+        showErrors: true,
+      });
       return;
     }
 
@@ -230,16 +272,35 @@ function bindGlobalHandlersOnce(): void {
       openSuccess(total);
     } catch (e) {
       console.error('Order failed', e);
-      contactsForm.render({ ...order.toContactsFormState(), valid: true, errors: 'Не удалось оформить заказ. Попробуйте ещё раз.' });
+      contactsForm.render({
+        ...order.toContactsFormState(),
+        valid: true,
+        errors: 'Не удалось оформить заказ. Попробуйте ещё раз.',
+        showErrors: true, // показать ошибку оплаты
+      });
     }
   });
 
+  // универсальный перерисовщик состояния заказа — НЕ скрывает ошибки насильно
   events.on('order:changed', () => {
-    orderForm.render(order.toOrderFormState());
-    contactsForm.render(order.toContactsFormState());
+    const s1 = order.validateStep1();
+    orderForm.render({
+      payment: order.payment ?? null,
+      address: order.address ?? '',
+      valid: s1.valid,
+      errors: s1.errors,
+      showErrors: step1ShowErrors,
+    });
+
+    const s2 = order.toContactsFormState();
+    contactsForm.render({
+      ...s2,
+      showErrors: step2ShowErrors,
+    });
   });
 }
 
+// ---- инициализация
 window.addEventListener('DOMContentLoaded', () => {
   void init();
 });
