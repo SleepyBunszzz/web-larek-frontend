@@ -199,8 +199,9 @@ function bindGlobalHandlersOnce(): void {
     order.setPhone(p.value);
   });
 
-  events.on('contacts.field:blur', () => {
-    const invalid = !order.validateContacts().valid;
+  events.on('contacts.field:blur', (p: { field: 'email' | 'phone' }) => {
+    order.setLastContactsBlur(p.field);
+    const invalid = !order.validateContacts(p.field).valid;
     if (invalid) order.setStep2ShowErrors(true);
   });
 

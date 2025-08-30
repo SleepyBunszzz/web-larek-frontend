@@ -19,7 +19,6 @@ export interface IEventEmitter {
   ): () => void;
 }
 
-
 export type PaymentMethod = 'card' | 'cash';
 
 export type ApiProduct = {
@@ -31,13 +30,12 @@ export type ApiProduct = {
   category: string;
 };
 
-
 export interface IProduct {
   id: string;
   name: string;
-  cost: number;     
-  desc: string;     
-  img_url: string;  
+  cost: number;     // из ApiProduct.price
+  desc: string;     // из ApiProduct.description
+  img_url: string;  // из ApiProduct.image
   category: string;
 }
 
@@ -81,13 +79,14 @@ export type EventPayloads = {
   'contacts:submit': undefined;
 };
 
-
 export interface IProductModel {
-  products: IProduct[];
-  setProducts(products: IProduct[]): void;           
+  // наружу — только геттеры
+  readonly products: IProduct[];
+  readonly preview: IProduct | null;
+
+  setProducts(products: ApiProduct[] | IProduct[]): void;
   getProduct(id: string): IProduct | undefined;
   setPreview(product: IProduct | null): void;
-  readonly preview?: IProduct | null;
 }
 
 export interface ICartModel {
@@ -110,10 +109,17 @@ export interface IOrderModel {
   setPhone(phone: string): void;
 
   validateStep1(): { valid: boolean; errors: string };
+  validateContacts(prefer?: 'email' | 'phone'): { valid: boolean; errors: string };
   validateAll(): { valid: boolean; errors: string };
   reset(): void;
   toOrderFormState(): OrderFormState;
   toContactsFormState(): ContactsFormState;
+
+  setStep1ShowErrors(v: boolean): void;
+  setStep2ShowErrors(v: boolean): void;
+  readonly step1ShowErrors: boolean;
+  readonly step2ShowErrors: boolean;
+  setLastContactsBlur(field: 'email' | 'phone'): void;
 }
 
 export type OrderFormState = {
@@ -145,8 +151,8 @@ export type OrderResponse = {
 };
 
 export interface ICommerceAPI extends IApiClient {
-  getProducts(): Promise<IProduct[]>;
-  getProductById(id: string): Promise<IProduct>;
+  getProducts(): Promise<ApiProduct[]>;
+  getProductById(id: string): Promise<ApiProduct>;
   createOrder(order: OrderPayload): Promise<OrderResponse>;
 }
 

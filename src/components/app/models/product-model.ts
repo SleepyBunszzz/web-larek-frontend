@@ -13,7 +13,6 @@ function toCdn(path?: string): string {
   return `${cdn.replace(/\/+$/, '')}/${s.replace(/^\/+/, '')}`;
 }
 
-
 function mapToProduct(raw: any): IProduct {
   return {
     id: String(raw?.id ?? ''),
