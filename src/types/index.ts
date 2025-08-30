@@ -49,6 +49,7 @@ export enum AppEvents {
   PRODUCT_PREVIEW = 'product:preview',
 
   CART_UPDATED = 'cart:updated',
+  CART_CHANGED = 'cart:changed',
 
   BASKET_OPEN = 'basket:open',
   ORDER_OPEN = 'order:open',
@@ -64,10 +65,13 @@ export type EventPayloads = {
   [AppEvents.PRODUCTS_LOADED]: IProduct[];
   [AppEvents.PRODUCT_PREVIEW]: IProduct | null;
   [AppEvents.CART_UPDATED]: { items: string[]; total: number; count: number } | undefined;
+  [AppEvents.CART_CHANGED]: undefined;
+
   [AppEvents.BASKET_OPEN]: undefined;
   [AppEvents.ORDER_OPEN]: undefined;
   [AppEvents.MODAL_OPEN]: { content?: HTMLElement } | undefined;
   [AppEvents.MODAL_CLOSE]: undefined;
+
   [AppEvents.ORDER_ADDRESS_CHANGED]: { address: string; payment?: PaymentMethod | null };
   [AppEvents.ORDER_PAYMENT_SELECTED]: { payment: PaymentMethod };
   [AppEvents.ORDER_SUBMITTED]: undefined;
@@ -80,7 +84,6 @@ export type EventPayloads = {
 };
 
 export interface IProductModel {
-  // наружу — только геттеры
   readonly products: IProduct[];
   readonly preview: IProduct | null;
 

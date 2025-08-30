@@ -1,3 +1,4 @@
+// src/index.ts
 import './scss/styles.scss';
 
 import { EventEmitter } from './components/common/base/events';
@@ -152,8 +153,8 @@ function bindGlobalHandlersOnce(): void {
   events.on('modal:open', () => (page.locked = true));
   events.on('modal:close', () => (page.locked = false));
 
-  // обновление корзины
-  cart.on('cart:changed', () => {
+  // обновление корзины (enum вместо «магической» строки)
+  cart.on(AppEvents.CART_CHANGED, () => {
     renderBasketFromModel();
     updateHeader();
   });
@@ -199,14 +200,18 @@ function bindGlobalHandlersOnce(): void {
     order.setPhone(p.value);
   });
 
+  // «первое действие» на шаге 2 — blur любого поля
   events.on('contacts.field:blur', (p: { field: 'email' | 'phone' }) => {
     order.setLastContactsBlur(p.field);
     const invalid = !order.validateContacts(p.field).valid;
     if (invalid) order.setStep2ShowErrors(true);
   });
 
-  // сабмит шага 2 (оплата)
+  // сабмит шага 2 (оплата) — защита от повторной отправки
+  let isSubmitting = false;
   events.on('contacts:submit', async () => {
+    if (isSubmitting) return;
+
     const res = order.validateContacts();
     if (!res.valid) {
       order.setStep2ShowErrors(true);
@@ -218,6 +223,10 @@ function bindGlobalHandlersOnce(): void {
       });
       return;
     }
+
+    isSubmitting = true;
+    // временно отключаем кнопку «Оплатить» на время запроса
+    contactsForm.valid = false;
 
     const payload: OrderPayload = {
       payment: order.payment!,
@@ -246,6 +255,11 @@ function bindGlobalHandlersOnce(): void {
         errors: 'Не удалось оформить заказ. Попробуйте ещё раз.',
         showErrors: true,
       });
+    } finally {
+      isSubmitting = false;
+      // восстановим доступность кнопки по актуальной валидности модели
+      const v = order.validateContacts();
+      contactsForm.valid = v.valid;
     }
   });
 

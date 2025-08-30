@@ -1,32 +1,33 @@
 import { BaseModel } from '../../common/base/model';
 import type { IProduct } from '../../../types';
+import { AppEvents } from '../../../types';
 
 export class CartModel extends BaseModel {
   items: IProduct[] = [];
 
-  addItem(p: IProduct) {
-    if (!this.items.find(i => i.id === p.id)) {
-      this.items.push(p);
-      this.emit('cart:changed');
+  addItem(product: IProduct): void {
+    if (!this.items.some((i) => i.id === product.id)) {
+      this.items.push(product);
+      this.emit(AppEvents.CART_CHANGED);
     }
   }
 
-  removeItem(id: string) {
-    const before = this.items.length;
-    this.items = this.items.filter(i => i.id !== id);
-    if (this.items.length !== before) {
-      this.emit('cart:changed');
+  removeItem(productId: string): void {
+    const lenBefore = this.items.length;
+    this.items = this.items.filter((i) => i.id !== productId);
+    if (this.items.length !== lenBefore) {
+      this.emit(AppEvents.CART_CHANGED);
     }
   }
 
-  clearCart() {
-    if (this.items.length) {
+  clearCart(): void {
+    if (this.items.length > 0) {
       this.items = [];
-      this.emit('cart:changed');
+      this.emit(AppEvents.CART_CHANGED);
     }
   }
 
   getTotal(): number {
-    return this.items.reduce((sum, p) => sum + (p.cost ?? 0), 0);
+    return this.items.reduce((acc, i) => acc + (i.cost ?? 0), 0);
   }
 }

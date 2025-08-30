@@ -5,7 +5,8 @@
 Структура проекта:
 - src/ — исходные файлы проекта
 - src/components/ — папка с JS/TS компонентами
-- src/components/base/ — папка с базовым кодом
+- src/components/common/ — базовые компоненты и инфраструктура (events, component, modal, page)
+- src/components/app/ — доменные компоненты приложения (карточки, формы, корзина, модели)
 
 Важные файлы:
 - src/pages/index.html — HTML-файл главной страницы
@@ -132,6 +133,8 @@ export enum AppEvents {
   PRODUCT_PREVIEW         = 'product:preview',
 
   CART_UPDATED            = 'cart:updated',
+  CART_CHANGED            = 'cart:changed',
+
   BASKET_OPEN             = 'basket:open',
   ORDER_OPEN              = 'order:open',
   MODAL_OPEN              = 'modal:open',
@@ -146,6 +149,8 @@ export type EventPayloads = {
   [AppEvents.PRODUCTS_LOADED]: IProduct[];
   [AppEvents.PRODUCT_PREVIEW]: IProduct | null;
   [AppEvents.CART_UPDATED]: { items: string[]; total: number; count: number } | undefined;
+  [AppEvents.CART_CHANGED]: undefined;
+
   [AppEvents.BASKET_OPEN]: undefined;
   [AppEvents.ORDER_OPEN]: undefined;
   [AppEvents.MODAL_OPEN]: { content?: HTMLElement } | undefined;
@@ -185,6 +190,8 @@ export type EventPayloads = {
 
 #### Класс `BaseForm`
 Единый базовый класс форм. Содержит submit-кнопку, контейнер ошибок и сеттеры `valid`/`errors`. Используется `OrderForm` и `ContactsForm`.
+- `valid = false` — дизейблит кнопку отправки.
+- `errors = '...'` — пишет текст в `.form__errors`.
 
 ### Модели данных
 
@@ -216,7 +223,9 @@ export type EventPayloads = {
 - `addItem(product: IProduct)`
 - `removeItem(productId: string)`
 - `clearCart()`
-- `getTotal(): number`
+- `getTotal(): number` — суммирует `product.cost`
+
+> На любые изменения корзины эмитится `AppEvents.CART_CHANGED`.
 
 #### Класс `OrderModel`
 
@@ -269,10 +278,9 @@ export type EventPayloads = {
 
 **Методы:**
 - `constructor(container: HTMLElement, events: IEventEmitter)`
-- `open()` — открыть модалку
-- `close()` — закрыть модалку
+- `open()` — открыть модалку (эмитит `modal:open`)
+- `close()` — закрыть модалку (эмитит `modal:close`)
 - `set content(node: HTMLElement)` — вставить содержимое
-- внутри эмитит `modal:open` / `modal:close`
 
 ---
 
@@ -335,7 +343,7 @@ export type EventPayloads = {
 - `set total(total: number)` — показывает итог
 - `render({ items, total, selected })` — вызывает сеттеры, возвращает контейнер
 
-> Важно: **при открытии корзины** мы только показываем текущее состояние в модалке; перерисовка корзины и счётчика в шапке происходит **только** по событию модели `'cart:changed'`.
+> Важно: **при открытии корзины** мы только показываем текущее состояние в модалке; перерисовка корзины и счётчика в шапке происходит **только** по событию модели `cart:changed`.
 
 ---
 
@@ -364,10 +372,10 @@ export type EventPayloads = {
 
 **Методы:**
 - `constructor(container, events)` — эмитит:
-  - `ORDER_ADDRESS_CHANGED` (при вводе адреса)
+  - `ORDER_ADDRESS_CHANGED` (при вводе адреса) — payload `{ address, payment?: 'card' | 'cash' | null }`
   - `ORDER_PAYMENT_SELECTED` (при клике по способу оплаты)
   - `ORDER_SUBMITTED` (submit формы)
-- `render(state: OrderFormState)` — применяет `payment/address/valid/errors`, возвращает форму
+- `render(state: OrderFormState & { showErrors?: boolean })` — применяет `payment/address/valid/errors`, управляет показом ошибок, возвращает форму
 
 ---
 
@@ -396,7 +404,7 @@ export type EventPayloads = {
 - `closeBtn: HTMLButtonElement` — `.order-success__close`
 
 **Методы:**
-- `render({ total, onClose })` — показывает сумму **из ответа сервера**, вешает обработчик закрытия
+- `render({ total, onClose })` — показывает сумму **из ответа сервера**, навешивает `onClose`
 
 ### Презентер
 
@@ -404,11 +412,11 @@ export type EventPayloads = {
 
 Задачи:
 1. Загрузка товаров из API и помещение в `ProductModel` (нормализация в модели).
-2. Рендер каталога/корзины/шапки. Перерисовка корзины и счётчика — **только** по `'cart:changed'`.
+2. Рендер каталога/корзины/шапки. Перерисовка корзины и счётчика — **только** по `cart:changed`.
 3. Реакция на события UI: превью, добавление/удаление из корзины, ввод адреса/контактов, выбор оплаты.
-4. Универсальный перерисовщик по событию модели `order:changed` — перерисовка `OrderForm` и `ContactsForm` без насильного скрытия ошибок (флаги внутри модели).
-5. Управление модалками (basket → step1 → step2 → success).
-6. Сабмит шага 2: `api.createOrder(payload)` → показываем сумму из `OrderResponse.total`, очищаем корзину, сбрасываем заказ.
+4. Универсальный перерисовщик по событию модели `order:changed` — перерисовка `OrderForm` и `ContactsForm` с учётом внутренних флагов показа ошибок.
+5. Управление модалками (basket → step1 → step2 → success); при `modal:open`/`modal:close` страница блокируется через `page.locked`.
+6. Сабмит шага 2: защита от повторной отправки (`isSubmitting`), временная блокировка кнопки (`contactsForm.valid = false`), запрос `api.createOrder(payload)` → показываем сумму из `OrderResponse.total`, очищаем корзину и сбрасываем заказ.
 
 ### API
 
