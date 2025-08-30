@@ -1,14 +1,9 @@
 import { EventEmitter } from '../../common/base/events'; 
 import { BaseForm } from '../../common/base-form';
 import { AppEvents, PaymentMethod } from '../../../types'; 
- 
-type OrderFormState = {
-  payment: PaymentMethod | null;
-  address: string;
-  valid: boolean;
-  errors: string;
-  showErrors?: boolean;
-};
+import type { OrderFormState as OrderFormStateBase } from '../../../types';
+
+type OrderFormViewState = OrderFormStateBase & { showErrors?: boolean };
 
 export class OrderForm extends BaseForm {
   private inputAddress: HTMLInputElement;
@@ -47,7 +42,7 @@ export class OrderForm extends BaseForm {
     });
   }
 
-  render(state: OrderFormState) {
+  render(state: OrderFormViewState) {
     const address = state.address ?? '';
     if (this.inputAddress.value !== address) {
       this.inputAddress.value = address;
@@ -71,4 +66,3 @@ export class OrderForm extends BaseForm {
     this.btnCash.setAttribute('aria-pressed', String(method === 'cash'));
   }
 }
-

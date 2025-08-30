@@ -125,7 +125,6 @@ export type OrderFormState = {
 };
 
 export type ContactsFormState = {
-  name?: string;
   email: string;
   phone: string;
   valid: boolean;
