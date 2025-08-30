@@ -223,9 +223,6 @@ events.on('contacts.email:change', (p: { field: 'email'; value: string }) => {
 events.on('contacts.phone:change', (p: { field: 'phone'; value: string }) => {
   order.setPhone(p.value);
 });
-events.on('contacts.name:change', (p: { field: 'name'; value: string }) => {
-  order.setName(p.value);
-});
 
 
   // сабмит шага 2 (оплата)

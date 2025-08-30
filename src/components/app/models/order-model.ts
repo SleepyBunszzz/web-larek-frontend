@@ -1,36 +1,30 @@
 import { BaseModel } from '../../common/base/model';
-import type { PaymentMethod } from '../../../types';
+import type { PaymentMethod, IOrderModel, OrderFormState, ContactsFormState } from '../../../types';
 
 type ValidationResult = { valid: boolean; errors: string };
 
-export class OrderModel extends BaseModel {
+export class OrderModel extends BaseModel implements IOrderModel {
   payment: PaymentMethod | null = null;
-  name = '';
   address = '';
   email = '';
   phone = '';
 
-  setPayment(method: PaymentMethod | null) {
+  setPayment(method: PaymentMethod | null): void {
     this.payment = method;
     this.emit('order:changed');
   }
 
-  setName(name: string) {
-    this.name = name;
-    this.emit('order:changed');
-  }
-
-  setAddress(address: string) {
+  setAddress(address: string): void {
     this.address = address;
     this.emit('order:changed');
   }
 
-  setEmail(email: string) {
+  setEmail(email: string): void {
     this.email = email;
     this.emit('order:changed');
   }
 
-  setPhone(phone: string) {
+  setPhone(phone: string): void {
     this.phone = phone;
     this.emit('order:changed');
   }
@@ -40,10 +34,12 @@ export class OrderModel extends BaseModel {
     if (!hasAddress) {
       return { valid: false, errors: 'Необходимо указать адрес' };
     }
+
     const hasPayment = !!this.payment;
     if (!hasPayment) {
       return { valid: false, errors: 'Выберите способ оплаты' };
     }
+
     return { valid: true, errors: '' };
   }
 
@@ -71,7 +67,7 @@ export class OrderModel extends BaseModel {
     return { valid: true, errors: '' };
   }
 
-  toOrderFormState() {
+  toOrderFormState(): OrderFormState {
     const { valid, errors } = this.validateStep1();
     return {
       payment: this.payment,
@@ -81,10 +77,9 @@ export class OrderModel extends BaseModel {
     };
   }
 
-  toContactsFormState() {
+  toContactsFormState(): ContactsFormState {
     const { valid, errors } = this.validateContacts();
     return {
-      name: this.name,
       email: this.email,
       phone: this.phone,
       valid,
@@ -92,9 +87,8 @@ export class OrderModel extends BaseModel {
     };
   }
 
-  reset() {
+  reset(): void {
     this.payment = null;
-    this.name = '';
     this.address = '';
     this.email = '';
     this.phone = '';

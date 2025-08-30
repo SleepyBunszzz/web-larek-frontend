@@ -77,7 +77,6 @@ export type EventPayloads = {
   'order:changed': undefined;
   'contacts.email:change': { field: 'email'; value: string };
   'contacts.phone:change': { field: 'phone'; value: string };
-  'contacts.name:change': { field: 'name'; value: string };
   'contacts:submit': undefined;
 };
 
@@ -103,7 +102,6 @@ export interface IOrderModel {
   address: string;
   email: string;
   phone: string;
-  name?: string;
 
   setPayment(method: PaymentMethod | null): void;
   setAddress(address: string): void;
