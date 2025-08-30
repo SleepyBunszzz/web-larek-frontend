@@ -19,7 +19,6 @@ export interface IEventEmitter {
   ): () => void;
 }
 
-
 export type PaymentMethod = 'card' | 'cash';
 
 export type ApiProduct = {
@@ -31,13 +30,12 @@ export type ApiProduct = {
   category: string;
 };
 
-
 export interface IProduct {
   id: string;
   name: string;
-  cost: number;     
-  desc: string;     
-  img_url: string;  
+  cost: number;     // из ApiProduct.price
+  desc: string;     // из ApiProduct.description
+  img_url: string;  // из ApiProduct.image
   category: string;
 }
 
@@ -51,6 +49,7 @@ export enum AppEvents {
   PRODUCT_PREVIEW = 'product:preview',
 
   CART_UPDATED = 'cart:updated',
+  CART_CHANGED = 'cart:changed',
 
   BASKET_OPEN = 'basket:open',
   ORDER_OPEN = 'order:open',
@@ -66,10 +65,13 @@ export type EventPayloads = {
   [AppEvents.PRODUCTS_LOADED]: IProduct[];
   [AppEvents.PRODUCT_PREVIEW]: IProduct | null;
   [AppEvents.CART_UPDATED]: { items: string[]; total: number; count: number } | undefined;
+  [AppEvents.CART_CHANGED]: undefined;
+
   [AppEvents.BASKET_OPEN]: undefined;
   [AppEvents.ORDER_OPEN]: undefined;
   [AppEvents.MODAL_OPEN]: { content?: HTMLElement } | undefined;
   [AppEvents.MODAL_CLOSE]: undefined;
+
   [AppEvents.ORDER_ADDRESS_CHANGED]: { address: string; payment?: PaymentMethod | null };
   [AppEvents.ORDER_PAYMENT_SELECTED]: { payment: PaymentMethod };
   [AppEvents.ORDER_SUBMITTED]: undefined;
@@ -77,17 +79,17 @@ export type EventPayloads = {
   'order:changed': undefined;
   'contacts.email:change': { field: 'email'; value: string };
   'contacts.phone:change': { field: 'phone'; value: string };
-  'contacts.name:change': { field: 'name'; value: string };
+  'contacts.field:blur': { field: 'email' | 'phone' };
   'contacts:submit': undefined;
 };
 
-
 export interface IProductModel {
-  products: IProduct[];
-  setProducts(products: IProduct[]): void;           
+  readonly products: IProduct[];
+  readonly preview: IProduct | null;
+
+  setProducts(products: ApiProduct[] | IProduct[]): void;
   getProduct(id: string): IProduct | undefined;
   setPreview(product: IProduct | null): void;
-  readonly preview?: IProduct | null;
 }
 
 export interface ICartModel {
@@ -103,7 +105,6 @@ export interface IOrderModel {
   address: string;
   email: string;
   phone: string;
-  name?: string;
 
   setPayment(method: PaymentMethod | null): void;
   setAddress(address: string): void;
@@ -111,10 +112,17 @@ export interface IOrderModel {
   setPhone(phone: string): void;
 
   validateStep1(): { valid: boolean; errors: string };
+  validateContacts(prefer?: 'email' | 'phone'): { valid: boolean; errors: string };
   validateAll(): { valid: boolean; errors: string };
   reset(): void;
   toOrderFormState(): OrderFormState;
   toContactsFormState(): ContactsFormState;
+
+  setStep1ShowErrors(v: boolean): void;
+  setStep2ShowErrors(v: boolean): void;
+  readonly step1ShowErrors: boolean;
+  readonly step2ShowErrors: boolean;
+  setLastContactsBlur(field: 'email' | 'phone'): void;
 }
 
 export type OrderFormState = {
@@ -125,7 +133,6 @@ export type OrderFormState = {
 };
 
 export type ContactsFormState = {
-  name?: string;
   email: string;
   phone: string;
   valid: boolean;
@@ -141,10 +148,15 @@ export type OrderPayload = {
   total: number;
 };
 
+export type OrderResponse = {
+  id: string;
+  total: number;
+};
+
 export interface ICommerceAPI extends IApiClient {
-  getProducts(): Promise<IProduct[]>;
-  getProductById(id: string): Promise<IProduct>;
-  createOrder(order: OrderPayload): Promise<void>;
+  getProducts(): Promise<ApiProduct[]>;
+  getProductById(id: string): Promise<ApiProduct>;
+  createOrder(order: OrderPayload): Promise<OrderResponse>;
 }
 
 export interface IModalProps {

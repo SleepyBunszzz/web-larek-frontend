@@ -1,4 +1,5 @@
 import { EventEmitter } from '../common/base/events';
+import { ensureElement } from '../../utils/utils';
 
 export abstract class BaseForm {
   protected el: HTMLFormElement;
@@ -11,12 +12,12 @@ export abstract class BaseForm {
     this.el = container;
     this.events = events;
 
-    this.submitBtn = this.el.querySelector('.order__button, .form__submit') as HTMLButtonElement;
+    this.submitBtn = ensureElement<HTMLButtonElement>('button[type="submit"]', this.el);
     this.errorsEl = this.el.querySelector('.form__errors');
   }
 
   set valid(v: boolean) {
-    if (this.submitBtn) this.submitBtn.toggleAttribute('disabled', !v);
+    this.submitBtn.toggleAttribute('disabled', !v);
   }
 
   set errors(msg: string) {
