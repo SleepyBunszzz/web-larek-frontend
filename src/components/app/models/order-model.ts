@@ -9,6 +9,21 @@ export class OrderModel extends BaseModel implements IOrderModel {
   email = '';
   phone = '';
 
+  private _step1ShowErrors = false;
+  private _step2ShowErrors = false;
+
+  setStep1ShowErrors(v: boolean): void {
+    this._step1ShowErrors = v;
+    this.emit('order:changed');
+  }
+
+  setStep2ShowErrors(v: boolean): void {
+    this._step2ShowErrors = v;
+    this.emit('order:changed');
+  }
+
+  get step1ShowErrors(): boolean { return this._step1ShowErrors; }
+  get step2ShowErrors(): boolean { return this._step2ShowErrors; }
   setPayment(method: PaymentMethod | null): void {
     this.payment = method;
     this.emit('order:changed');
@@ -92,6 +107,8 @@ export class OrderModel extends BaseModel implements IOrderModel {
     this.address = '';
     this.email = '';
     this.phone = '';
+    this._step1ShowErrors = false;
+    this._step2ShowErrors = false;
     this.emit('order:changed');
   }
 }

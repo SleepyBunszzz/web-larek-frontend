@@ -138,10 +138,15 @@ export type OrderPayload = {
   total: number;
 };
 
+export type OrderResponse = {
+  id: string;
+  total: number;
+};
+
 export interface ICommerceAPI extends IApiClient {
   getProducts(): Promise<IProduct[]>;
   getProductById(id: string): Promise<IProduct>;
-  createOrder(order: OrderPayload): Promise<void>;
+  createOrder(order: OrderPayload): Promise<OrderResponse>;
 }
 
 export interface IModalProps {

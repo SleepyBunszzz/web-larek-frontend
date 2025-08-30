@@ -1,5 +1,5 @@
 import { Api, ApiListResponse } from '../../common/base/api';
-import type { ApiProduct, OrderPayload } from '../../../types';
+import type { ApiProduct, OrderPayload, OrderResponse } from '../../../types';
 
 export class CommerceAPI extends Api {
   async getProducts(): Promise<ApiProduct[]> {
@@ -14,7 +14,7 @@ export class CommerceAPI extends Api {
     return this.get<ApiProduct>(`/product/${id}`);
   }
 
-  async createOrder(order: OrderPayload): Promise<void> {
-    await this.post<void, OrderPayload>('/order', order);
+  async createOrder(order: OrderPayload): Promise<OrderResponse> {
+    return await this.post<OrderResponse, OrderPayload>('/order', order);
   }
 }

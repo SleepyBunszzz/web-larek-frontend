@@ -38,10 +38,6 @@ const orderForm    = new OrderForm(cloneTemplate<HTMLFormElement>('#order'), eve
 const contactsForm = new ContactsForm(cloneTemplate<HTMLFormElement>('#contacts'), events);
 const successView  = new SuccessView(cloneTemplate<HTMLDivElement>('#success'));
 
-// ---- флаги показа ошибок на шагах
-let step1ShowErrors = false; // шаг 1: адрес + способ оплаты
-let step2ShowErrors = false; // шаг 2: контакты
-
 // ---- рендеры каталога/корзины/шапки
 function renderCatalog(): void {
   if (!products.products.length) {
@@ -83,8 +79,6 @@ function openBasket(): void {
       items: cart.items.map((p, idx) =>
         buildBasketItem(p, idx + 1, (id: string) => {
           cart.removeItem(id);
-          renderBasketFromModel();
-          updateHeader();
         })
       ),
       total: cart.getTotal(),
@@ -128,17 +122,17 @@ function openOrderStep1(): void {
     address: order.address ?? '',
     valid: res.valid,
     errors: res.errors,
-    showErrors: false, // скрываем ошибки до сабмита/клика
+    showErrors: false,
   });
 
-  step1ShowErrors = false; // сброс флага при открытии шага
+  order.setStep1ShowErrors(false);
   modal.render({ content: formEl });
 }
 
 function openOrderStep2(): void {
   const state = order.toContactsFormState();
-  const el = contactsForm.render({ ...state, showErrors: false }); // скрыть до сабмита
-  step2ShowErrors = false; // сброс флага при открытии
+  const el = contactsForm.render({ ...state, showErrors: false });
+  order.setStep2ShowErrors(false);
   modal.render({ content: el });
 }
 
@@ -158,7 +152,7 @@ function bindGlobalHandlersOnce(): void {
   events.on('modal:open', () => (page.locked = true));
   events.on('modal:close', () => (page.locked = false));
 
-  // обновление корзины
+  // обновление корзины (единственная точка перерисовки корзины/шапки)
   cart.on('cart:changed', () => {
     renderBasketFromModel();
     updateHeader();
@@ -166,43 +160,24 @@ function bindGlobalHandlersOnce(): void {
 
   // изменение адреса и (по желанию) одновременная установка оплаты
   events.on(
-    AppEvents.ORDER_ADDRESS_CHANGED ?? ('order:address:changed' as any),
-    ({ payment, address }: { payment: 'card' | 'cash' | null; address: string }) => {
+    AppEvents.ORDER_ADDRESS_CHANGED,
+    ({ payment, address }: { payment?: 'card' | 'cash' | null; address: string }) => {
       if (payment) order.setPayment(payment);
       if (typeof address === 'string') order.setAddress(address);
-
-      // const s1 = order.validateStep1();
-      // orderForm.render({
-      //   payment: order.payment ?? null,
-      //   address: order.address ?? '',
-      //   valid: s1.valid,
-      //   errors: s1.errors,
-      //   showErrors: step1ShowErrors, // показываем ошибки, только если включён флаг
-      // });
     }
   );
 
   // пользователь выбрал способ оплаты
   events.on(AppEvents.ORDER_PAYMENT_SELECTED, ({ payment }: { payment: 'card' | 'cash' }) => {
-
-    // если адрес пуст — разрешаем показать ошибку сразу
-    if (!(order.address ?? '').trim()) step1ShowErrors = true;
+    if (!(order.address ?? '').trim()) order.setStep1ShowErrors(true);
     order.setPayment(payment);
-    // const s1 = order.validateStep1();
-    // orderForm.render({
-    //   payment: order.payment ?? null,
-    //   address: order.address ?? '',
-    //   valid: s1.valid,
-    //   errors: s1.errors,
-    //   showErrors: step1ShowErrors, // теперь сообщение об адресе появится
-    // });
   });
 
   // сабмит шага 1
-  events.on(AppEvents.ORDER_SUBMITTED ?? ('order:submitted' as any), () => {
+  events.on(AppEvents.ORDER_SUBMITTED, () => {
     const res = order.validateStep1();
     if (!res.valid) {
-      step1ShowErrors = true; 
+      order.setStep1ShowErrors(true);
       orderForm.render({
         payment: order.payment ?? null,
         address: order.address ?? '',
@@ -213,23 +188,23 @@ function bindGlobalHandlersOnce(): void {
       return;
     }
 
+    order.setStep1ShowErrors(false);
     openOrderStep2();
   });
 
   // контакты: изменения инпутов
-events.on('contacts.email:change', (p: { field: 'email'; value: string }) => {
-  order.setEmail(p.value);
-});
-events.on('contacts.phone:change', (p: { field: 'phone'; value: string }) => {
-  order.setPhone(p.value);
-});
-
+  events.on('contacts.email:change', (p: { field: 'email'; value: string }) => {
+    order.setEmail(p.value);
+  });
+  events.on('contacts.phone:change', (p: { field: 'phone'; value: string }) => {
+    order.setPhone(p.value);
+  });
 
   // сабмит шага 2 (оплата)
   events.on('contacts:submit', async () => {
     const res = order.validateContacts();
     if (!res.valid) {
-      step2ShowErrors = true;
+      order.setStep2ShowErrors(true);
       contactsForm.render({
         ...order.toContactsFormState(),
         valid: false,
@@ -249,15 +224,16 @@ events.on('contacts.phone:change', (p: { field: 'phone'; value: string }) => {
     };
 
     try {
-      await api.createOrder(payload);
-      const total = cart.getTotal();
+      // Берём сумму из ответа сервера
+      const resp = await api.createOrder(payload);
+      const totalFromServer = resp?.total ?? cart.getTotal();
 
       cart.clearCart();
       order.reset();
 
       renderBasketFromModel();
       updateHeader();
-      openSuccess(total);
+      openSuccess(totalFromServer);
     } catch (e) {
       console.error('Order failed', e);
       contactsForm.render({
@@ -269,7 +245,6 @@ events.on('contacts.phone:change', (p: { field: 'phone'; value: string }) => {
     }
   });
 
-  // универсальный перерисовщик состояния заказа — НЕ скрывает ошибки насильно
   order.on('order:changed', () => {
     const s1 = order.validateStep1();
     orderForm.render({
@@ -277,13 +252,13 @@ events.on('contacts.phone:change', (p: { field: 'phone'; value: string }) => {
       address: order.address ?? '',
       valid: s1.valid,
       errors: s1.errors,
-      showErrors: step1ShowErrors,
+      showErrors: order.step1ShowErrors,
     });
 
     const s2 = order.toContactsFormState();
     contactsForm.render({
       ...s2,
-      showErrors: step2ShowErrors,
+      showErrors: order.step2ShowErrors,
     });
   });
 }
