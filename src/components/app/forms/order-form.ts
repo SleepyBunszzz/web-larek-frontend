@@ -3,7 +3,6 @@ import { BaseForm } from '../../common/base-form';
 import { AppEvents, PaymentMethod } from '../../../types'; 
 import type { OrderFormState as OrderFormStateBase } from '../../../types';
 
-// Локальный тип представления: доменное состояние + UI-флаг
 type OrderFormViewState = OrderFormStateBase & { showErrors?: boolean };
 
 export class OrderForm extends BaseForm {
@@ -20,7 +19,6 @@ export class OrderForm extends BaseForm {
 
     this.inputAddress.addEventListener('input', () => {
       const address = this.inputAddress.value ?? '';
-      // строгая типизация по EventPayloads
       this.events.emit(AppEvents.ORDER_ADDRESS_CHANGED, { address });
     });
 

@@ -16,7 +16,7 @@ export class ProductCardPreview extends BaseProductCard<PreviewData> {
     this.btn = this.el.querySelector<HTMLButtonElement>('.card__button, [data-role="toggle-cart"]') ?? undefined;
 
     this.btn?.addEventListener('click', () => {
-      if (this._id) this.props.onToggleCart(this._id);
+      if (this.id) this.props.onToggleCart(this.id);
     });
   }
 
@@ -32,7 +32,7 @@ export class ProductCardPreview extends BaseProductCard<PreviewData> {
 
     if (this.btn) {
       if (data.cost <= 0) {
-        this.setText(this.btn, 'Недоступно'); 
+        this.setText(this.btn, 'Недоступно');
         this.setDisabled(this.btn, true);
         this.btn.classList.add('is-disabled');
       } else {

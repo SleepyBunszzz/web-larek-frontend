@@ -2,7 +2,7 @@ import { Component } from '../common/base/component';
 import type { IProduct } from '../../types';
 import { formatNumber, categoryClass } from '../../utils/utils';
 
-type ProductCardProps = {
+export type ProductCardProps = {
   onPreview?: (id: string) => void;
 };
 
@@ -23,8 +23,11 @@ export abstract class BaseProductCard<TData extends IProduct> extends Component<
     this.image = this.el.querySelector<HTMLImageElement>('.card__image') ?? undefined;
   }
 
+  public get id(): string | null {
+    return this._id;
+  }
 
-  protected applyBase(data: IProduct) {
+  protected applyBase(data: TData) {
     this._id = data.id;
 
     this.setText(this.title, data.name);
@@ -33,7 +36,12 @@ export abstract class BaseProductCard<TData extends IProduct> extends Component<
 
     if (this.category) {
       this.setText(this.category, data.category);
-      this.category.className = 'card__category';
+
+      this.category.classList.forEach((c) => {
+        if (c !== 'card__category' && c.startsWith('card__category_')) {
+          this.category!.classList.remove(c);
+        }
+      });
       const cls = categoryClass(data.category);
       if (cls) this.category.classList.add(cls);
     }
@@ -45,7 +53,7 @@ export class ProductCard extends BaseProductCard<IProduct> {
     super(container);
 
     this.el.addEventListener('click', () => {
-      if (this._id && this.props.onPreview) this.props.onPreview(this._id);
+      if (this.id && this.props.onPreview) this.props.onPreview(this.id);
     });
   }
 
@@ -55,4 +63,3 @@ export class ProductCard extends BaseProductCard<IProduct> {
     return this.el;
   }
 }
-

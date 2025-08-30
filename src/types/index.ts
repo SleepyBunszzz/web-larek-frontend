@@ -77,6 +77,7 @@ export type EventPayloads = {
   'order:changed': undefined;
   'contacts.email:change': { field: 'email'; value: string };
   'contacts.phone:change': { field: 'phone'; value: string };
+  'contacts.field:blur': { field: 'email' | 'phone' };
   'contacts:submit': undefined;
 };
 

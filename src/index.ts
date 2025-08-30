@@ -152,7 +152,7 @@ function bindGlobalHandlersOnce(): void {
   events.on('modal:open', () => (page.locked = true));
   events.on('modal:close', () => (page.locked = false));
 
-  // обновление корзины (единственная точка перерисовки корзины/шапки)
+  // обновление корзины
   cart.on('cart:changed', () => {
     renderBasketFromModel();
     updateHeader();
@@ -187,7 +187,6 @@ function bindGlobalHandlersOnce(): void {
       });
       return;
     }
-
     order.setStep1ShowErrors(false);
     openOrderStep2();
   });
@@ -198,6 +197,11 @@ function bindGlobalHandlersOnce(): void {
   });
   events.on('contacts.phone:change', (p: { field: 'phone'; value: string }) => {
     order.setPhone(p.value);
+  });
+
+  events.on('contacts.field:blur', () => {
+    const invalid = !order.validateContacts().valid;
+    if (invalid) order.setStep2ShowErrors(true);
   });
 
   // сабмит шага 2 (оплата)
@@ -224,7 +228,6 @@ function bindGlobalHandlersOnce(): void {
     };
 
     try {
-      // Берём сумму из ответа сервера
       const resp = await api.createOrder(payload);
       const totalFromServer = resp?.total ?? cart.getTotal();
 
@@ -240,11 +243,12 @@ function bindGlobalHandlersOnce(): void {
         ...order.toContactsFormState(),
         valid: true,
         errors: 'Не удалось оформить заказ. Попробуйте ещё раз.',
-        showErrors: true, // показать ошибку оплаты
+        showErrors: true,
       });
     }
   });
 
+  // универсальный перерисовщик
   order.on('order:changed', () => {
     const s1 = order.validateStep1();
     orderForm.render({
